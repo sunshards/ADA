@@ -26,7 +26,7 @@ FREE_MODELS = [
 # Shoud I use """ or # for the documentation?
 
 # 3 tries for models distanced by a 2 second delay each one then fallback to the next one
-def narrate(character, state, user_input, retries=3, delay=2):
+def narrate(history, retries=3, delay=2):
     """
     Generate the narrative by trying the free models in order.
     If a model fails, try the next one.
@@ -39,7 +39,7 @@ def narrate(character, state, user_input, retries=3, delay=2):
             try:
                 response = client.chat.completions.create(
                     model=model,
-                    messages=messages,
+                    messages=history,
                     max_tokens=400
                 )
                 return response.choices[0].message.content
@@ -73,7 +73,7 @@ def main():
 
     # Initial Character Sheet and State
     # TODO: Load from a file or create a character creation function
-    character = {"nome": "Arin", "classe": "Guerriero", "salute": 100, "inventario": ["spada corta"]}
+    character = {"nome": "Monty", "classe": "Cs Graduate", "salute": 100, "inventario": ["spada corta"]}
     state = {"luogo": "Taverna Iniziale", "quest": "Nessuna"}
 
     history = [
