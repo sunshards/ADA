@@ -22,39 +22,17 @@ FREE_MODELS = [
     "openrouter/auto"
 ]
 
+
+# Shoud I use """ or # for the documentation?
+
 # 3 tries for models distanced by a 2 second delay each one then fallback to the next one
 def narrate(character, state, user_input, retries=3, delay=2):
     """
     Generate the narrative by trying the free models in order.
     If a model fails, try the next one.
-    retries: total number of attempts per model in case of rate limiting
-    delay: seconds to wait before retrying
+    retries: total number of 3 attempts per model in case of rate limiting
+    delay: 2 seconds to wait before retrying
     """
-    messages = [
-        {
-            # System prompt defining the role of the AI
-            "role": "system",
-            "content": (
-                "Sei il master di una text adventure fantasy stile D&D. "
-                "Descrivi ambienti, PNG ed eventi in modo immersivo. "
-                "Non decidere mai al posto del giocatore."
-            )
-        },
-        {
-            # Provide character details from character dictionary
-            "role": "system",
-            "content": f"Scheda personaggio: {character}"
-        },
-        {
-            "role": "system",
-            "content": f"Stato avventura: {state}"
-        },
-        {
-            # User input prompt
-            "role": "user",
-            "content": user_input
-        }
-    ]
 
     for model in FREE_MODELS:
         for attempt in range(retries):
@@ -66,20 +44,63 @@ def narrate(character, state, user_input, retries=3, delay=2):
                 )
                 return response.choices[0].message.content
             except Exception as e:
-                print(f"[WARN] Model {model} failed on attempt {attempt+1}/{retries}: {e}")
+                print(f"[WARN] Model {model} failed attempt {attempt+1}: {e}")
                 time.sleep(delay)
+        print(f"[INFO] Passing to next model...")
 
     return "Il narratore è momentaneamente senza voce. Riprova tra poco."
 
+
+
 # --- Test CLI ---
+# if __name__ == "__main__":
+#     print("MAIN RUNNING")
+
+#     result = narrate(
+#         character={"nome": "Arin", "classe": "Guerriero"},
+#         state={"luogo": "Taverna Iniziale", "quest": "Nessuna"},
+#         user_input="Descrivi una taverna fantasy"
+#     )
+
+#     print("RESULT:")
+#     print(result)
+
+
+
+# --- Loop di gioco CLI ---
+def main():
+    print("=== ADA TI DA' IL BENVENUTO ===")
+
+    # Initial Character Sheet and State
+    # TODO: Load from a file or create a character creation function
+    character = {"nome": "Arin", "classe": "Guerriero", "salute": 100, "inventario": ["spada corta"]}
+    state = {"luogo": "Taverna Iniziale", "quest": "Nessuna"}
+
+    history = [
+    # System prompt defining the role of the AI
+    {"role": "system", "content": "Sei il master di una text adventure fantasy stile D&D."
+    "Descrivi ambienti, PNG ed eventi in modo immersivo. Non decidere mai al posto del giocatore."},
+    # Provide character details from character dictionary
+    {"role": "system", "content": f"Scheda personaggio: {character}"},
+    # User input prompt
+    {"role": "system", "content": f"Stato avventura: {state}"}
+    ]
+
+    while True:
+        user_input = input("\nCosa fai? ")
+        if user_input.lower() in ["exit", "quit", "esci"]:
+            break
+
+        # Add current user response to history (so the model remembers your actions)
+        history.append({"role": "user", "content": user_input})
+
+        # Call the model to get the narrative response
+        output = narrate(history)
+
+        # Add the response to history (so the context is preserved)
+        history.append({"role": "assistant", "content": output})
+
+        print("\n" + output)
+
 if __name__ == "__main__":
-    print("MAIN RUNNING")
-
-    result = narrate(
-        character={"nome": "Arin", "classe": "Guerriero"},
-        state={"luogo": "Taverna Iniziale", "quest": "Nessuna"},
-        user_input="Descrivi una taverna fantasy"
-    )
-
-    print("RESULT:")
-    print(result)
+    main()
