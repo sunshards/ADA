@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 import time
 
-# Load il file .env -> so it takes the api key (remember to create it)
+# Load the .env file -> so it takes the api key (remember to create it)
 load_dotenv()
 
 # Client OpenRouter
