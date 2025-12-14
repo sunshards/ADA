@@ -1,0 +1,7 @@
+.parent {
+  min-height: 80vh;
+}
+
+.character-row-card {
+    min-height: 120px;
+}
