@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <nav class="navbar navbar-expand bg-body-tertiary shadow-sm sticky-top">
+        <div class="container-fluid">
+            <h4 class="navbar-text ms-auto me-auto">{{ character.name }}</h4>
+        </div>
+    </nav>
+    
+    <div class="container py-3">
+
+        <!-- Image and description row  -->
+        <div class="row mb-2">
+            <div class="col-lg-4 col-md-4 col-sm-12 d-flex flex-column align-items-center gap-2 mb-3">
+                        <img 
+                            src="{{ url_for('static', filename='temp/avatar_placeholder.jpeg') }}" 
+                            alt="User avatar"
+                            class="img-fluid mt-5"
+                        >
+                        <button 
+                            type="button" 
+                            class="btn btn-primary align-self-stretch mx-2"
+                        >
+                            Upload image...
+                        </button>
+            </div>
+            <div class="col-lg-8 col-md-8 col-sm-12 align-content-center my-2">
+                <label for="descriptionTextArea" class="form-label">Descrizione del personaggio</label>
+                <textarea 
+                    class="form-control no-resize" 
+                    id="descriptionTextArea" 
+                    rows="8" 
+                    placeholder="Inserisci la descrizione del tuo personaggio..."
+                >
+                </textarea>
+            </div>
+        </div>
+
+        <!-- Details Row -->
+
+        <dl class="row">
+            {% for term, value in character.get_sheet_terms().items() %}
+            <dt class="col-sm-3">
+                {{term}}
+            </dt>
+            <dd class="col-sm-9">
+                {{value}}
+            </dd>
+            {% endfor %}
+        </dl>
+
+        <!-- Stats Row -->
+        <div class="row mb-2">
+            <div class="col-lg-2 col-sm-12 mb-2">
+                <h3>Remaining points: </h3>
+                <p>2</p>
+            </div>
+
+            {% for stat, value in character.stats.items() %}
+            <div class="col-lg-auto col-md-4 col-sm-6 mb-2">
+                <div class="vstack align-items-center bg-secondary">
+                    <h3>{{ stat.value }}</h3>
+                    <div class="box">
+                        <p>{{value}}</p>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary"><i data-feather="arrow-up-circle"></i></button>
+                        <button class="btn btn-primary"><i data-feather="arrow-down-circle"></i></button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Skills Row -->
+         <div class="row mb-2">
+            <div class="col-md-6">
+                <h3>Skill In Combat</h3>
+                <ul class="list-group list-group-item-primary">
+                    {% for name, description in character.combat_abilities.items() %}
+                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{description}}"">
+                            {{name}}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="col-md-6">
+                <h3>Skill Out of Combat</h3>
+                <ul class="list-group list-group-item-secondary">
+                    {% for name, description in character.world_abilities.items() %}
+                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{description}}"">
+                            {{name}}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+         </div>
+
+        <!-- Items Row -->
+        <div class="row mb-2">
+            <div class="col-md-6">
+                <h3>Equipped Items</h3>
+                <ul class="list-group list-group-item-primary">
+                    {% for name, description in character.equip_items.items() %}
+                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{description}}"">
+                            {{name}}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="col-md-6">
+                <h3>Items Out of Combat</h3>
+                <ul class="list-group list-group-item-secondary">
+                    {% for name, description in character.world_items.items() %}
+                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{description}}"">
+                            {{name}}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+         </div>
+
+    </div>
+
+
+
+
+
+
+    
+    <script>
+        // Cambia la descrizione nella text area
+        const desc = {{ character.description | tojson }};
+        $('#descriptionTextArea').val(desc);
+    </script>
+
+
+{% endblock %}
+

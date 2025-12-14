@@ -5,3 +5,7 @@
 .character-row-card {
     min-height: 120px;
 }
+
+.no-resize {
+  resize: none !important;
+}
