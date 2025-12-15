@@ -1,0 +1,21 @@
+.description-box {
+    padding: 10px;
+    border-radius: 5px;
+    background-color: lightgray;
+}
+
+.description-text {
+    background-color: white;
+    color: black;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+.player-counter {
+    font-size: 5rem;
+}
+
+.main-button {
+    max-width: 8rem;
+    font-size: 2rem;
+}

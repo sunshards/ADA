@@ -1,8 +1,4 @@
-* {
-     box-sizing: border-box !important;
-}
-
-html, body {margin: 0; height: 100%; overflow: hidden;}
+html, body {overflow: hidden;}
 
 .message {
   padding: 10px 14px;

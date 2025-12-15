@@ -112,7 +112,6 @@ def create_app(test_config=None):
                                birthplace = "Mordor", 
                                description=desc)
 
-
     messages = [
         {"type": "out", "value": "a"},
         {"type": "out", "value": "b"},
@@ -133,13 +132,13 @@ def create_app(test_config=None):
         {"username" : "Bimbo", "MAX_HP": 0, "HP": 0, "percentage": 0 }
     ]
 
-
     # a simple page that says hello
     @app.route('/hello')
     def hello():
         # return render_template('landing.html')
         # return render_template('character_selection.html')
         # return render_template('character_sheet.html', character=test_character)
-        return render_template('chat.html', messages=messages, players=players)
+        # return render_template('chat.html', messages=messages, players=players)
+        return render_template('campaign_host.html')
     return app
 
