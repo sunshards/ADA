@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='character_sheet.css') }}">
+{% endblock %}
+
 {% block content %}
     <nav class="navbar navbar-expand bg-body-tertiary shadow-sm sticky-top">
         <div class="container-fluid">

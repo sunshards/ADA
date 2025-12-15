@@ -1,0 +1,49 @@
+* {
+     box-sizing: border-box !important;
+}
+
+html, body {margin: 0; height: 100%; overflow: hidden;}
+
+.message {
+  padding: 10px 14px;
+  border-radius: 15px;
+  max-width: 75%;
+  font-size: 0.9rem;
+}
+
+.message-in {
+  background-color: rgba(57, 192, 237, 0.2);
+}
+
+.message-out {
+  background-color: #f1f1f1;
+}
+
+.no-resize {
+  resize: none !important;
+}
+
+
+.player-column {
+        max-height: 85%;
+}
+.player-card {
+    background-color: white;
+    border: black solid;
+    padding: 5px;
+    box-sizing: border-box !important;
+}
+.player-box {
+    background-color: beige;
+}
+
+.player-avatar {
+    width: 5rem;
+}
+
+.lifebar-container {
+    height: 0.5rem;
+}
+.lifebar-health {
+    background-color: red;
+}

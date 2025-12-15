@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='character_selection.css') }}">
+{% endblock %}
+
 {% block content %}
     <nav class="navbar navbar-expand bg-body-tertiary shadow-sm">
         <div class="container-fluid">
@@ -12,7 +16,7 @@
         <div class="row text-bg-primary align-items-center my-3 p-2 rounded-2 character-row-card">
             <div class="col-lg-4 col-md-5 text-center text-md-start">
                 <img
-                    src="{{ url_for('static', filename='temp/avatar_placeholder.jpeg') }}"
+                    src="{{ url_for('static', filename='temp/avatar_animal_00001.png') }}"
                     alt="User avatar"
                     class="img-fluid rounded-circle"
                     style="max-width: 96px;"
