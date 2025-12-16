@@ -51,7 +51,7 @@ def narrate(history, retries=3, delay=2):
                 time.sleep(delay)
         print(f"[INFO] Passing to next model...")
 
-    return "Il narratore è momentaneamente senza voce. Riprova tra poco."
+    return "The narrator is temporarily out of voice. Please try again shortly."
 
 
 
