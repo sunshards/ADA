@@ -60,7 +60,6 @@ class Character:
             "Birthplace" : self.birthplace
         }
 
-    
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__)
