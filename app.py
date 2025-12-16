@@ -1,5 +1,6 @@
 from openai import OpenAI
 from dotenv import load_dotenv
+from enum import Enum
 import os
 import time
 import re
@@ -36,7 +37,7 @@ system_rules =  {
         "lost_items": [],
         "location": "current location of the player",
         "quest": "current quest of the player",
-        "health_change": 0,
+        "max_hp_change": 0,
         "xp_gained": 0,
         "gold_change": 0,
         "encounter": false
@@ -60,6 +61,31 @@ system_rules =  {
         - Output must start with { and end with }
         """
 }
+
+alignment_prompt = {
+    "role": "system",
+    "content": """
+The player character has a moral alignment and a righteousness alignment.
+
+alignment_morality:
+- good: compassionate, altruistic, avoids cruelty
+- neutral: pragmatic, self-interested but not malicious
+- evil: cruel, selfish, enjoys or accepts suffering
+
+alignment_righteousness:
+- lawful: respects rules, traditions, authority
+- neutral: flexible, situational ethics
+- chaotic: distrusts authority, values freedom over order
+
+INSTRUCTIONS:
+- Always narrate the world, NPC reactions, and consequences in a way consistent with the character's alignments.
+- Do NOT change the character's alignment unless explicitly instructed by the system.
+- Do NOT force actions; only influence tone, outcomes, and reactions.
+- If the player acts strongly against alignment, show narrative tension or consequences.
+"""
+}
+
+
 # add encountered Npc????
 
 turn_count = 0
@@ -67,11 +93,13 @@ recent_history = []
 #! Make sure to change the strat point, so you can get the places from the approved database
 long_term_memory = "The character is located in the Initial Tavern. No relevant events so far."
 
-
-
-
-
-
+class Statistic(Enum):
+    STR = "strength"
+    CON = "constitution"
+    DEX = "dexterity"
+    INT = "intelligence"
+    WIS = "wisdom"
+    CHA = "charisma"
 
 # Shoud I use """ or # for the documentation?
 
@@ -169,16 +197,37 @@ def main():
     # Initial Character Sheet and State
     # TODO: Load the character and state from a dataabse save file if exists
     #! Class is importat in the game logic, only certain class can learn certain abylities (let it check the database for the match)
-    character = {"health": 100,
-                 "name": "Monty", 
-                 "race": "Toro Umano", 
-                 "class": "Cs Graduate",
-                 "gold": 50, 
-                 "xp": 0,
-                 "inventory": ["spada corta"]}
+    character = {
+        "name": "Monty",
+        "race": "Toro Umano",
+        "class": "Cs Graduate",
+        "max_hp": 100,
+        "gold": 50,
+        "xp": 0,
+        "level": 1,
+        "inventory": ["spada corta"],
+        "equipped_weapon": "spada corta",
+
+        "alignment_righteousness": "neutral",
+        "alignment_morality": "neutral",
+
+        "birthplace": "",
+        "description": "",
+
+        "stats": {
+            Statistic.STR.value: 14,
+            Statistic.CON.value: 12,
+            Statistic.DEX.value: 10,
+            Statistic.INT.value: 10,
+            Statistic.WIS.value: 10,
+            Statistic.CHA.value: 10
+        }
+    }
+
 
     state = {"location": "Taverna Iniziale", 
-             "quest": "Nessuna"}
+             "quest": "Nessuna"
+    }
 
     while True:
         user_input = input("\n What do you do? (type 'quit' to quit) \n> ")
@@ -192,9 +241,11 @@ def main():
         # Refresh history with the latest recent_history every turn (with every enter command)
         history = [
             system_rules,
+            alignment_prompt,
             {"role": "system", "content": f"Long-term memory: {long_term_memory}"},
             {"role": "system", "content": f"Character sheet: {character}"},
             {"role": "system", "content": f"State: {state}"},
+            {"role": "system", "content": f"The character's alignment is {character['alignment_righteousness']} {character['alignment_morality']}."}
         ] + recent_history[-10:]  # last 10 messages (5 ai + 5 user = 5 completed turns) for context
 
         output = narrate(history)
@@ -214,7 +265,7 @@ def main():
                     character["inventory"].remove(item)
 
             # Update stats                                                                      V <- default value, if the Ai forgets to include gold_change 
-            character["health"] = update_stat(character["health"],    data.get("health_change", 0), 0, 100)
+            character["max_hp"] = update_stat(character["max_hp"],    data.get("max_hp_change", 0), 0, 100)
             character["gold"]   = update_stat(character["gold"],      data.get("gold_change",   0))
             character["xp"]     = update_stat(character["xp"],        data.get("xp_gained",     0))
 
@@ -227,7 +278,7 @@ def main():
 
             # Print status for debugging
             print("-" * 30)
-            print(f"[Location: {state['location'].upper()}] | Health: {character['health']} | Gold: {character['gold']}")
+            print(f"[Location: {state['location'].upper()}] | max_hp: {character['max_hp']} | Gold: {character['gold']}")
             print("-" * 30)
 
             # Print the narration
