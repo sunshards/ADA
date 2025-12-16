@@ -22,6 +22,10 @@ class AlignmentRighteousness(Enum):
     CHAOTIC = "Chaotic"
 
 class Character:
+    # livello
+    # hp massimi
+    # milestones
+
     def __init__(self, 
                  name : str, 
                  stats : dict[Statistic, int], 
@@ -135,10 +139,10 @@ def create_app(test_config=None):
     # a simple page that says hello
     @app.route('/hello')
     def hello():
-        # return render_template('landing.html')
-        # return render_template('character_selection.html')
-        # return render_template('character_sheet.html', character=test_character)
-        # return render_template('chat.html', messages=messages, players=players)
-        return render_template('campaign_host.html')
+         return render_template('character_sheet.html', character=test_character)
+    
+    from . import landing
+    app.register_blueprint(landing.bp)
+    
     return app
 
