@@ -105,13 +105,6 @@ class Statistic(Enum):
 
 # 3 tries for models distanced by a 2 second delay each one then fallback to the next one
 def narrate(history, retries=3, delay=2):
-    """
-    Generate the narrative by trying the free models in order.
-    If a model fails, try the next one.
-    retries: total number of 3 attempts per model in case of rate limiting
-    delay: 2 seconds to wait before retrying
-    """
-
     for model in FREE_MODELS:
         for attempt in range(retries):
             try:
@@ -185,6 +178,73 @@ def summarise_memory(long_memory, recent_history):
 def update_stat(current, change, min_val=0, max_val=9999):
     return max(min_val, min(max_val, current + change))
 
+# Use the AI to generate a full character sheet JSON based on a free-text description.
+def create_character_from_description(description: str) -> dict:
+    prompt = [
+            {"role": "system", "content": "You are a character creation AI. Generate a complete D&D-style character sheet in JSON format."},
+            {"role": "user", "content": f"""
+        Create a character sheet based on this description:
+        {description}
+
+        Include the following fields:
+        - name
+        - race
+        - class
+        - max_hp
+        - gold
+        - xp
+        - level
+        - inventory
+        - equipped_weapon
+        - alignment_righteousness
+        - alignment_morality
+        - birthplace
+        - description
+        - stats (STR, CON, DEX, INT, WIS, CHA)
+
+        Constraints for stats:
+        - Each individual stat must be at least 5.
+        - The sum of all stats must **not exceed 45**.
+        - Distribute stats logically based on the character description.
+        - Keep stats as integers.
+
+        Return **only valid JSON**, without explanations or markdown. Ensure the JSON is complete and all fields are present.
+        """}
+        ] 
+
+    output = narrate(prompt)
+    try:
+        character = extract_json(output)
+        return character
+    except Exception as e:
+        print(f"[ERROR] Failed to generate character: {e}")
+        print("Using placeholder character instead.")
+        # Fallback placeholder
+        return {
+            "name": "Unknown Hero",
+            "race": "Human",
+            "class": "Adventurer",
+            "max_hp": 100,
+            "gold": 50,
+            "xp": 0,
+            "level": 1,
+            "inventory": ["basic sword"],
+            "equipped_weapon": "basic sword",
+            "alignment_righteousness": "neutral",
+            "alignment_morality": "neutral",
+            "birthplace": "",
+            "description": description,
+            "stats": {
+                Statistic.STR.value: 5,
+                Statistic.CON.value: 5,
+                Statistic.DEX.value: 5,
+                Statistic.INT.value: 5,
+                Statistic.WIS.value: 5,
+                Statistic.CHA.value: 5
+            }
+        }
+
+
 
 # --- Loop di gioco CLI ---
 def main():
@@ -193,37 +253,12 @@ def main():
     global turn_count
     global recent_history
     print("=== ADA TI DA' IL BENVENUTO ===")
+    print("\nDescribe your character in your own words (free text):")
+    user_desc = input("> ")
 
-    # Initial Character Sheet and State
-    # TODO: Load the character and state from a dataabse save file if exists
-    #! Class is importat in the game logic, only certain class can learn certain abylities (let it check the database for the match)
-    character = {
-        "name": "Monty",
-        "race": "Toro Umano",
-        "class": "Cs Graduate",
-        "max_hp": 100,
-        "gold": 50,
-        "xp": 0,
-        "level": 1,
-        "inventory": ["spada corta"],
-        "equipped_weapon": "spada corta",
-
-        "alignment_righteousness": "neutral",
-        "alignment_morality": "neutral",
-
-        "birthplace": "",
-        "description": "",
-
-        "stats": {
-            Statistic.STR.value: 14,
-            Statistic.CON.value: 12,
-            Statistic.DEX.value: 10,
-            Statistic.INT.value: 10,
-            Statistic.WIS.value: 10,
-            Statistic.CHA.value: 10
-        }
-    }
-
+    character = create_character_from_description(user_desc)
+    print("\nYour character has been created:")
+    print(json.dumps(character, indent=2))
 
     state = {"location": "Taverna Iniziale", 
              "quest": "Nessuna"
@@ -278,7 +313,7 @@ def main():
 
             # Print status for debugging
             print("-" * 30)
-            print(f"[Location: {state['location'].upper()}] | max_hp: {character['max_hp']} | Gold: {character['gold']}")
+            print(f"[Location: {state['location'].upper()}] | HP: {character['max_hp']} | Gold: {character['gold']}")
             print("-" * 30)
 
             # Print the narration
