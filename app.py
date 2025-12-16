@@ -82,6 +82,8 @@ INSTRUCTIONS:
 - Do NOT change the character's alignment unless explicitly instructed by the system.
 - Do NOT force actions; only influence tone, outcomes, and reactions.
 - If the player acts strongly against alignment, show narrative tension or consequences.
+- If the player acts passively against alignment, show internal conflict or doubt.
+- If the player acts in a way that is extremely against their alignment, the action cannot be performed outright unless there are extreme circumstances.
 """
 }
 
@@ -90,7 +92,7 @@ INSTRUCTIONS:
 
 turn_count = 0
 recent_history = []
-#! Make sure to change the strat point, so you can get the places from the approved database
+#! Make sure to change the start point, so you can get the places from the approved database
 long_term_memory = "The character is located in the Initial Tavern. No relevant events so far."
 
 class Statistic(Enum):
