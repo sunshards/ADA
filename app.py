@@ -315,7 +315,7 @@ def main():
 
             # Print status for debugging
             print("-" * 30)
-            print(f"[Location: {state['location'].upper()}] | HP: {character['max_hp']} | Gold: {character['gold']}")
+            print(f"[Location: {state['location'].upper()}] | Quest: {state['quest'].lower()} | HP: {character['max_hp']} | Gold: {character['gold']}")
             print("-" * 30)
 
             # Print the narration
