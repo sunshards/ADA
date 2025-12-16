@@ -218,7 +218,7 @@ def main():
             character["xp"]     = update_stat(character["xp"],        data.get("xp_gained",     0))
 
 
-            # Update the location and current quest (P-refix for prompt variables)
+            # Update the location and current quest
             if "location" in data:
                 state["location"] = data["location"]
             if "quest" in data:
