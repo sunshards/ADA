@@ -1,5 +1,6 @@
 from openai import OpenAI
 from dotenv import load_dotenv
+from enum import Enum
 import os
 import time
 import re
@@ -36,7 +37,7 @@ system_rules =  {
         "lost_items": [],
         "location": "current location of the player",
         "quest": "current quest of the player",
-        "health_change": 0,
+        "max_hp_change": 0,
         "xp_gained": 0,
         "gold_change": 0,
         "encounter": false
@@ -60,6 +61,31 @@ system_rules =  {
         - Output must start with { and end with }
         """
 }
+
+alignment_prompt = {
+    "role": "system",
+    "content": """
+The player character has a moral alignment and a righteousness alignment.
+
+alignment_morality:
+- good: compassionate, altruistic, avoids cruelty
+- neutral: pragmatic, self-interested but not malicious
+- evil: cruel, selfish, enjoys or accepts suffering
+
+alignment_righteousness:
+- lawful: respects rules, traditions, authority
+- neutral: flexible, situational ethics
+- chaotic: distrusts authority, values freedom over order
+
+INSTRUCTIONS:
+- Always narrate the world, NPC reactions, and consequences in a way consistent with the character's alignments.
+- Do NOT change the character's alignment unless explicitly instructed by the system.
+- Do NOT force actions; only influence tone, outcomes, and reactions.
+- If the player acts strongly against alignment, show narrative tension or consequences.
+"""
+}
+
+
 # add encountered Npc????
 
 turn_count = 0
@@ -67,23 +93,18 @@ recent_history = []
 #! Make sure to change the strat point, so you can get the places from the approved database
 long_term_memory = "The character is located in the Initial Tavern. No relevant events so far."
 
-
-
-
-
-
+class Statistic(Enum):
+    STR = "strength"
+    CON = "constitution"
+    DEX = "dexterity"
+    INT = "intelligence"
+    WIS = "wisdom"
+    CHA = "charisma"
 
 # Shoud I use """ or # for the documentation?
 
 # 3 tries for models distanced by a 2 second delay each one then fallback to the next one
 def narrate(history, retries=3, delay=2):
-    """
-    Generate the narrative by trying the free models in order.
-    If a model fails, try the next one.
-    retries: total number of 3 attempts per model in case of rate limiting
-    delay: 2 seconds to wait before retrying
-    """
-
     for model in FREE_MODELS:
         for attempt in range(retries):
             try:
@@ -157,6 +178,73 @@ def summarise_memory(long_memory, recent_history):
 def update_stat(current, change, min_val=0, max_val=9999):
     return max(min_val, min(max_val, current + change))
 
+# Use the AI to generate a full character sheet JSON based on a free-text description.
+def create_character_from_description(description: str) -> dict:
+    prompt = [
+            {"role": "system", "content": "You are a character creation AI. Generate a complete D&D-style character sheet in JSON format."},
+            {"role": "user", "content": f"""
+        Create a character sheet based on this description:
+        {description}
+
+        Include the following fields:
+        - name
+        - race
+        - class
+        - max_hp
+        - gold
+        - xp
+        - level
+        - inventory
+        - equipped_weapon
+        - alignment_righteousness
+        - alignment_morality
+        - birthplace
+        - description
+        - stats (STR, CON, DEX, INT, WIS, CHA)
+
+        Constraints for stats:
+        - Each individual stat must be at least 5.
+        - The sum of all stats must **not exceed 45**.
+        - Distribute stats logically based on the character description.
+        - Keep stats as integers.
+
+        Return **only valid JSON**, without explanations or markdown. Ensure the JSON is complete and all fields are present.
+        """}
+        ] 
+
+    output = narrate(prompt)
+    try:
+        character = extract_json(output)
+        return character
+    except Exception as e:
+        print(f"[ERROR] Failed to generate character: {e}")
+        print("Using placeholder character instead.")
+        # Fallback placeholder
+        return {
+            "name": "Unknown Hero",
+            "race": "Human",
+            "class": "Adventurer",
+            "max_hp": 100,
+            "gold": 50,
+            "xp": 0,
+            "level": 1,
+            "inventory": ["basic sword"],
+            "equipped_weapon": "basic sword",
+            "alignment_righteousness": "neutral",
+            "alignment_morality": "neutral",
+            "birthplace": "",
+            "description": description,
+            "stats": {
+                Statistic.STR.value: 5,
+                Statistic.CON.value: 5,
+                Statistic.DEX.value: 5,
+                Statistic.INT.value: 5,
+                Statistic.WIS.value: 5,
+                Statistic.CHA.value: 5
+            }
+        }
+
+
 
 # --- Loop di gioco CLI ---
 def main():
@@ -165,20 +253,16 @@ def main():
     global turn_count
     global recent_history
     print("=== ADA TI DA' IL BENVENUTO ===")
+    print("\nDescribe your character in your own words (free text):")
+    user_desc = input("> ")
 
-    # Initial Character Sheet and State
-    # TODO: Load the character and state from a dataabse save file if exists
-    #! Class is importat in the game logic, only certain class can learn certain abylities (let it check the database for the match)
-    character = {"health": 100,
-                 "name": "Monty", 
-                 "race": "Toro Umano", 
-                 "class": "Cs Graduate",
-                 "gold": 50, 
-                 "xp": 0,
-                 "inventory": ["spada corta"]}
+    character = create_character_from_description(user_desc)
+    print("\nYour character has been created:")
+    print(json.dumps(character, indent=2))
 
     state = {"location": "Taverna Iniziale", 
-             "quest": "Nessuna"}
+             "quest": "Nessuna"
+    }
 
     while True:
         user_input = input("\n What do you do? (type 'quit' to quit) \n> ")
@@ -192,9 +276,11 @@ def main():
         # Refresh history with the latest recent_history every turn (with every enter command)
         history = [
             system_rules,
+            alignment_prompt,
             {"role": "system", "content": f"Long-term memory: {long_term_memory}"},
             {"role": "system", "content": f"Character sheet: {character}"},
             {"role": "system", "content": f"State: {state}"},
+            {"role": "system", "content": f"The character's alignment is {character['alignment_righteousness']} {character['alignment_morality']}."}
         ] + recent_history[-10:]  # last 10 messages (5 ai + 5 user = 5 completed turns) for context
 
         output = narrate(history)
@@ -214,7 +300,7 @@ def main():
                     character["inventory"].remove(item)
 
             # Update stats                                                                      V <- default value, if the Ai forgets to include gold_change 
-            character["health"] = update_stat(character["health"],    data.get("health_change", 0), 0, 100)
+            character["max_hp"] = update_stat(character["max_hp"],    data.get("max_hp_change", 0), 0, 100)
             character["gold"]   = update_stat(character["gold"],      data.get("gold_change",   0))
             character["xp"]     = update_stat(character["xp"],        data.get("xp_gained",     0))
 
@@ -227,7 +313,7 @@ def main():
 
             # Print status for debugging
             print("-" * 30)
-            print(f"[Location: {state['location'].upper()}] | Health: {character['health']} | Gold: {character['gold']}")
+            print(f"[Location: {state['location'].upper()}] | HP: {character['max_hp']} | Gold: {character['gold']}")
             print("-" * 30)
 
             # Print the narration
