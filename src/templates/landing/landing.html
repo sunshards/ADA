@@ -29,17 +29,27 @@
 
     <div class="container">
         <div class="row">
-            <form class="parent d-flex flex-column h-100 justify-content-center align-content-center ">
-            <label for="mainTextArea" class="form-label ">
-                <h2>Benvenuto.</h2>
-            </label>
-            <textarea type="text" 
-            class="form-control-lg" 
-            id="mainTextArea" 
-            placeholder="Inserisci la descrizione del tuo personaggio..."
-            style="overflow: auto; height: 150px; max-height: 40vh;">
-            </textarea>
-        </form>
+            <form 
+            class="parent d-flex flex-column h-100 justify-content-center align-content-center "
+            method="POST"
+            >
+                <label for="mainTextArea" class="form-label ">
+                    <h2>Benvenuto.</h2>
+                </label>
+                <textarea type="text" 
+                    class="form-control-lg mb-2" 
+                    id="mainTextArea" 
+                    name="characterPrompt"
+                    placeholder="Inserisci la descrizione del tuo personaggio..."
+                    style="overflow: auto; height: 150px; max-height: 40vh;"
+                >
+                </textarea>
+                <input 
+                    type="submit" 
+                    value="Done" 
+                    class="btn btn-primary"
+                >
+            </form>
         </div>
     </div>
 
