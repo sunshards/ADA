@@ -43,6 +43,7 @@ system_rules =  {
         }
 
         Regole:
+        - ALWAYS respond in English!
         - narration: narrative text only
         - If the player talks to an NPC, include the dialogue in narration.
         - found_items: items found by the player (add to inventory)
@@ -186,6 +187,8 @@ def main():
             print("Saving game (lie), Goodbye!")
             break
 
+        recent_history.append({"role": "user", "content": user_input})
+
         # Refresh history with the latest recent_history every turn (with every enter command)
         history = [
             system_rules,
@@ -195,8 +198,6 @@ def main():
         ] + recent_history[-10:]  # last 10 messages (5 ai + 5 user = 5 completed turns) for context
 
         output = narrate(history)
-
-        recent_history.append({"role": "user", "content": user_input})
 
         try:
             data = extract_json(output)
@@ -224,10 +225,12 @@ def main():
             if "quest" in data:
                 state["quest"] = data["quest"]
 
-            # Print status fro debugging
+            # Print status for debugging
             print("-" * 30)
             print(f"[Location: {state['location'].upper()}] | Health: {character['health']} | Gold: {character['gold']}")
             print("-" * 30)
+
+            # Print the narration
             print(data["narration"])
 
             # Every 10 messages (5 turns), summarise and update long-term memory
