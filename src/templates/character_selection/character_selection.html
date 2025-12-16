@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='character_selection.css') }}">
+{% endblock %}
+
+{% block content %}
+    <nav class="navbar navbar-expand bg-body-tertiary shadow-sm">
+        <div class="container-fluid">
+            <h4 class="navbar-text ms-auto me-auto">Your characters</h4>
+        </div>
+    </nav>
+
+    <div class="container py-3">
+        
+        <div class="row text-bg-primary align-items-center my-3 p-2 rounded-2 character-row-card">
+            <div class="col-lg-4 col-md-5 text-center text-md-start">
+                <img
+                    src="{{ url_for('static', filename='temp/avatar_animal_00001.png') }}"
+                    alt="User avatar"
+                    class="img-fluid rounded-circle"
+                    style="max-width: 96px;"
+                >
+            </div>
+            <div class="col d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-primary">
+                    <i data-feather="edit"></i>
+                </button>
+                <button type="button" class="btn btn-primary">
+                    <i data-feather="trash"></i>
+                </button>
+                <button type="button" class="btn btn-primary">Gioca</button>
+            </div>
+        </div>
+
+        <div class="row text-bg-primary align-items-center my-3 p-2 rounded-2 character-row-card">
+            <div class="col d-flex justify-content-start">
+                <div class="btn btn-light">Create a new character...</div>
+            </div>
+        </div>
+        
+        
+        
+        
+    </div>
+
+    
+
+{% endblock %}
+

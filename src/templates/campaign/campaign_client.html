@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='campaign.css') }}">
+{% endblock %}
+
+{% block content %}
+    <main class=" h-100 d-flex flex-column">
+
+        <nav class="navbar navbar-expand bg-body-tertiary shadow-sm mb-5">
+            <div class="container-fluid">
+                <h4 class="navbar-text ms-auto me-auto">Campaign</h4>
+            </div>
+        </nav>
+        
+        <div class="container h-100 d-flex flex-column">
+            <div class="row mb-2 flex-grow-1">
+                <div class="col-md-8 d-flex">
+                    <div class="description-box flex-grow-1">
+                        <div class="description-title-box d-flex align-items-center gap-3">
+                            <h2 class="description-title">Description</h2> 
+                            <button class="btn btn-primary mb-2 reroll-description">
+                                <i data-feather="loader"></i>
+                            </button>
+                        </div>
+                        <div class="description-text">
+                            Lorem ipsum dolor sit amet consectetur adipisicing elit. Distinctio tenetur autem dicta velit corrupti ipsam culpa quis officia ut quae!
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <h2>Number of players</h2>
+                    <div class="count-box">
+                        <span class="player-counter">3/5</span>
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-5 d-flex justify-content-center">
+                <button class="btn btn-primary main-button">Ready</button>
+            </div>
+        </div>
+
+    </main>
+
+{% endblock %}
+

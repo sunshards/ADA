@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+{% endblock %}
+
+{% block content %}
+
+    <nav class="navbar navbar-expand bg-body-tertiary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">ADA</a>
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0 gap-2">
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Informazioni</a>
+                </li>
+                <li class="nav-item">
+                    <a class="btn btn-primary" href="{{ url_for('auth.login') }}">
+                        Accedi
+                    </a>
+                </li>
+            </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="parent row d-flex h-100 justify-content-center align-content-center ">
+            <label for="mainTextArea" class="form-label "><h2>Benvenuto.</h2></label>
+            <textarea type="text" class="form-control-lg" id="mainTextArea" placeholder="Inserisci la descrizione del tuo personaggio...">
+        </div>
+    </div>
+
+{% endblock %}
+
+
+
+

@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<main class="d-flex flex-column vh-100">
+    <nav class="navbar navbar-expand bg-body-tertiary shadow-sm sticky-top">
+        <div class="container-fluid">
+            <h4 class="navbar-text mx-auto">Campaign</h4>
+        </div>
+    </nav>
+
+    <div class="container-fluid w-100 h-100">
+        <div class="row w-100 h-100">
+            <div class="col-7 d-flex h-100 align-items-center">
+                <div class="card h-75 flex-grow-1 mb-5 ms-5">
+                    <!-- Header -->
+                    <div class="card-header bg-info text-white text-center">
+                        <h4 class="fw-bold">Live chat</h4>
+                    </div>
+
+                    <!-- Messages -->
+                    <div class="card-body overflow-y-scroll" >
+                        
+                        {% for message in messages %}
+                        
+                            {% if message["type"] == "out" %}
+                            <!-- Incoming Message -->
+                            <div class="d-flex mb-3">
+                                <img
+                                src="{{ url_for('static', filename='temp/avatar_animal_00001.png') }}"
+                                class="rounded-circle me-2" 
+                                width="40" 
+                                height="40" 
+                                alt="avatar"
+                                >
+                                <div class="message message-in">
+                                    Hello world
+                                </div>
+                            </div>
+
+                            {% else %}
+                            <!-- Outgoing Message -->
+                            <div class="d-flex flex-row-reverse mb-3">
+                                <img
+                                src="{{ url_for('static', filename='temp/avatar_animal_00002.png') }}"
+                                class="rounded-circle me-2" 
+                                width="40" 
+                                height="40" 
+                                alt="avatar"
+                                >
+                                <div class="message message-out me-2">
+                                    Hello world
+                                </div>
+                            </div>
+
+                            {% endif %}
+
+                        {% endfor %}
+                        
+                    </div>
+
+                    <!-- Form -->
+                    <div class="card-footer bg-body-tertiary">
+                        <textarea class="form-control no-resize" rows="3" placeholder="Type your message"></textarea>
+                    </div>
+
+
+                </div>
+            </div>
+
+            <div class="col-5 d-flex justify-content-center mt-2 player-column">
+                <div class="player-box d-flex flex-column align-items-center p-3 rounded-3 overflow-y-scroll flex-grow-1 mx-3">
+                    <h4>Players</h4>
+
+                    {% for player in players %}
+                    <div class="mb-4 player-card rounded-1">
+                        <img 
+                        src="{{ url_for('static', filename='temp/avatar_animal_00001.png') }}" 
+                        alt="Avatar 1"
+                        class="card-img-top player-avatar"
+                        >
+                        <div class="">
+                            <span class="player-name">{{player["username"]}}</span>
+                            <div class="progress lifebar-container" role="lifebar" aria-label="Lifebar" aria-valuenow="{{player["percentage"]}}" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress-bar lifebar-health" style="width: {{player["percentage"]}}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+
+
+
+
+{% endblock %}
+
