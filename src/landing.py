@@ -5,6 +5,7 @@ import pymongo
 
 bp = Blueprint('landing', __name__,)
 
-@bp.route('/')
+@bp.route('/', methods=('GET', 'POST'))
 def landing():
+    
     return render_template('landing/landing.html')
