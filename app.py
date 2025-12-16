@@ -5,38 +5,6 @@ import time
 import re
 import json
 
-# Global variables for long-term memory management 
-system_rules =  {
-            "role": "system",
-            "content": """You are the master of a D&D-style fantasy text adventure.
-                            You must ALWAYS respond in valid JSON, with this structure:
-
-        {
-        "narration": "descrizione immersiva della scena",
-        "found_items": [],
-        "lost_items": [],
-        "location": "current location of the player",
-        "quest": "current quest of the player",
-        }
-
-        Regole:
-        - narration: narrative text only
-        - found_items: items found by the player
-        - lost_items: lost items
-        - Never decide for the player
-        - Output ONLY raw JSON
-        - Do NOT use markdown
-        - Do NOT add explanations
-        - Do NOT wrap the JSON in ``` fences
-        - Output must start with { and end with }
-        """
-}
-turn_count = 0
-recent_history = []
-#! Make sure to change the strat point, so you can get the places from the approved database
-long_term_memory = "Il personaggio si trova nella Taverna Iniziale. Nessun evento rilevante finora."
-
-
 # Load the .env file -> so it takes the api key (remember to create it)
 load_dotenv()
 
@@ -56,6 +24,53 @@ FREE_MODELS = [
     "openrouter/auto"
 ]
 
+# Global variables for long-term memory management 
+system_rules =  {
+            "role": "system",
+            "content": """You are the master of a D&D-style fantasy text adventure.
+                            You must ALWAYS respond in valid JSON, with this structure:
+
+        {
+        "narration": "describe the scene immersively",
+        "found_items": [],
+        "lost_items": [],
+        "location": "current location of the player",
+        "quest": "current quest of the player",
+        "health_change": 0,
+        "xp_gained": 0,
+        "gold_change": 0,
+        "encounter": false
+        }
+
+        Regole:
+        - narration: narrative text only
+        - If the player talks to an NPC, include the dialogue in narration.
+        - found_items: items found by the player (add to inventory)
+        - lost_items: lost items (remove from inventory)
+        - location/quest: update state if changed
+        - encounter: true if a combat encounter starts
+        - use negative numbers for losses, positive for gains
+        - xp could be gainend only after combat
+        - Never decide for the player
+        - Output ONLY raw JSON
+        - Do NOT use markdown
+        - Do NOT add explanations
+        - Do NOT wrap the JSON in ``` fences
+        - Output must start with { and end with }
+        """
+}
+# add encountered Npc????
+
+turn_count = 0
+recent_history = []
+#! Make sure to change the strat point, so you can get the places from the approved database
+long_term_memory = "The character is located in the Initial Tavern. No relevant events so far."
+
+
+
+
+
+
 
 # Shoud I use """ or # for the documentation?
 
@@ -74,7 +89,8 @@ def narrate(history, retries=3, delay=2):
                 response = client.chat.completions.create(
                     model=model,
                     messages=history,
-                    max_tokens=400
+                    max_tokens=400,
+                    # temperature=0.7   # Tested but not used for now
                 )
                 return response.choices[0].message.content
             except Exception as e:
@@ -92,7 +108,7 @@ def narrate(history, retries=3, delay=2):
 
 #     result = narrate(
 #         character={"nome": "Arin", "classe": "Guerriero"},
-#         state={"Plocation": "Taverna Iniziale", "quest": "Nessuna"},
+#         state={"location": "Taverna Iniziale", "quest": "Nessuna"},
 #         user_input="Descrivi una taverna fantasy"
 #     )
 
@@ -122,30 +138,23 @@ def extract_json(text):
 # Context saved: summary1 + summary2 + recent messages (?)
 def summarise_memory(long_memory, recent_history):
     messages = [
-        {
-            "role": "system",
-            "content": "You summarise a D&D adventure for long-term memory."
-        },
-        {
-            "role": "user",
-            "content": f"""
-        Current memory: {long_memory}
-        Recent events: {recent_history}
-
-        Update the memory keeping ONLY important facts:
-        - locations
-        - quests
-        - items
-        - major decisions
-        """
-        }
-    ]
+            {"role": "system", "content": "You are a reporter. Summarise the salient facts of the adventure."},
+            {"role": "user", "content": f"Current memory: {long_memory}\n Recent events: {recent_history}\n Update memory with new facts."}
+        ]
 
     # Call the model to get the summary
     summary = narrate(messages)
 
-    return summary
+    try:
+        data = extract_json(summary)
+        return data.get("narration", summary)
+    except:
+        return summary
 
+
+# Utility function to update stats with bounds
+def update_stat(current, change, min_val=0, max_val=9999):
+    return max(min_val, min(max_val, current + change))
 
 
 # --- Loop di gioco CLI ---
@@ -158,76 +167,79 @@ def main():
 
     # Initial Character Sheet and State
     # TODO: Load the character and state from a dataabse save file if exists
-    character = {"salute": 100,
-                 "Name": "Monty", 
-                 "Razza": "Toro Umano", 
-                 "Classe": "Cs Graduate",  
+    #! Class is importat in the game logic, only certain class can learn certain abylities (let it check the database for the match)
+    character = {"health": 100,
+                 "name": "Monty", 
+                 "race": "Toro Umano", 
+                 "class": "Cs Graduate",
+                 "gold": 50, 
+                 "xp": 0,
                  "inventory": ["spada corta"]}
 
-    state = {"Plocation": "Taverna Iniziale", 
-             "Pquest": "Nessuna"}
-
-
-    history = [
-        system_rules,
-        {"role": "system", "content": f"Long-term memory: {long_term_memory}"},
-        {"role": "system", "content": f"Character: {character}"},
-        {"role": "system", "content": f"State: {state}"},
-    ] + recent_history[-8:]  # last 8 messages (4 ai + 4 user = 4 completed turns) for context
-
-
+    state = {"location": "Taverna Iniziale", 
+             "quest": "Nessuna"}
 
     while True:
-        if turn_count > 0 and turn_count % 10 == 0:
-            long_term_memory = summarise_memory(long_term_memory, recent_history)
-            recent_history = []
-
-        user_input = input("\nCosa fai? ")
-        turn_count += 1
-        if user_input.lower() in ["exit", "quit", "esci"]:
-            break
+        user_input = input("\n What do you do? (type 'quit' to quit) \n> ")
         
-        # Add current user response to history (so the model remembers your actions)
-        recent_history.append({"role": "user", "content": user_input})
+        if user_input.lower() in ["exit", "quit", "esci"]:
+            print("Saving game (lie), Goodbye!")
+            break
 
-        # Call the model to get the narrative response
+        # Refresh history with the latest recent_history every turn (with every enter command)
+        history = [
+            system_rules,
+            {"role": "system", "content": f"Long-term memory: {long_term_memory}"},
+            {"role": "system", "content": f"Character sheet: {character}"},
+            {"role": "system", "content": f"State: {state}"},
+        ] + recent_history[-10:]  # last 10 messages (5 ai + 5 user = 5 completed turns) for context
+
         output = narrate(history)
+
+        recent_history.append({"role": "user", "content": user_input})
 
         try:
             data = extract_json(output)
-        except json.JSONDecodeError:
-            print("Narrator Confused! JASON Inccorecty generated:")
-            print(output)
-            return
+            recent_history.append({"role": "assistant", "content": data["narration"]})
+            turn_count += 1
+            
+            # Add/remove items from inventory
+            for item in data.get("found_items", []):
+                if item not in character["inventory"]:
+                    character["inventory"].append(item)
 
-        # Add/remove items from inventory
-        for item in data["found_items"]:
-            if item not in character["inventory"]:
-                character["inventory"].append(item)
+            for item in data["lost_items"]:
+                if item in character["inventory"]:
+                    character["inventory"].remove(item)
 
-        for item in data["lost_items"]:
-            if item in character["inventory"]:
-                character["inventory"].remove(item)
+            # Update stats                                                                      V <- default value, if the Ai forgets to include gold_change 
+            character["health"] = update_stat(character["health"],    data.get("health_change", 0), 0, 100)
+            character["gold"]   = update_stat(character["gold"],      data.get("gold_change",   0))
+            character["xp"]     = update_stat(character["xp"],        data.get("xp_gained",     0))
 
-        # Update the location and current quest (P-refix for prompt variables)
-        if "location" in data:
-            state["Plocation"] = data["location"]
-        if "quest" in data:
-            state["Pquest"] = data["quest"]
 
-        # Add the response to history (so the context is preserved)
-        recent_history.append({"role": "assistant", "content": output})
-        history.append({
-            "role": "system",
-            "content": f"Updated character sheet: {character}"
-        })
-        history.append({
-            "role": "system",
-            "content": f"Adventure status updated: {state}"
-        })
+            # Update the location and current quest (P-refix for prompt variables)
+            if "location" in data:
+                state["location"] = data["location"]
+            if "quest" in data:
+                state["quest"] = data["quest"]
 
-        # We give the player only the narration part
-        print("\n" + data["narration"])
+            # Print status fro debugging
+            print("-" * 30)
+            print(f"[Location: {state['location'].upper()}] | Health: {character['health']} | Gold: {character['gold']}")
+            print("-" * 30)
+            print(data["narration"])
+
+            # Every 10 messages (5 turns), summarise and update long-term memory
+            if turn_count > 0 and turn_count % 10 == 0:
+                print("\n[SYSTEM] Ada is sorting through her memories...")
+                long_term_memory = summarise_memory(long_term_memory, recent_history)
+
+        except Exception as e:
+            print(f"\n[NARRATOR ERROR] The master in confused: {e}")
+            print(f"Raw response: {output}")
+
+        
 
 if __name__ == "__main__":
     main()
