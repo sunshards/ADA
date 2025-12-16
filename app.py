@@ -112,7 +112,7 @@ def narrate(history, retries=3, delay=2):
                     model=model,
                     messages=history,
                     max_tokens=400,
-                    # temperature=0.7   # Tested but not used for now
+                    # temperature=0.7   # Tested but not used for now (https://openrouter.ai/docs/api/reference/parameters)
                 )
                 return response.choices[0].message.content
             except Exception as e:
