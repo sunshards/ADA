@@ -1,0 +1,7 @@
+.parent {
+  min-height: 80vh;
+}
+
+.no-resize {
+  resize: none !important;
+}

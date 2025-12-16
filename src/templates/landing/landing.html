@@ -1,7 +1,11 @@
 {% extends 'base.html' %}
 
-{% block head %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+{% block css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='landing/landing.css') }}">
+{% endblock %}
+
+{% block js %}
+    <script type="text/javascript" src="{{ url_for('static', filename='landing/landing.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -24,9 +28,18 @@
     </nav>
 
     <div class="container">
-        <div class="parent row d-flex h-100 justify-content-center align-content-center ">
-            <label for="mainTextArea" class="form-label "><h2>Benvenuto.</h2></label>
-            <textarea type="text" class="form-control-lg" id="mainTextArea" placeholder="Inserisci la descrizione del tuo personaggio..."></textarea>
+        <div class="row">
+            <form class="parent d-flex flex-column h-100 justify-content-center align-content-center ">
+            <label for="mainTextArea" class="form-label ">
+                <h2>Benvenuto.</h2>
+            </label>
+            <textarea type="text" 
+            class="form-control-lg" 
+            id="mainTextArea" 
+            placeholder="Inserisci la descrizione del tuo personaggio..."
+            style="overflow: auto; height: 150px; max-height: 40vh;">
+            </textarea>
+        </form>
         </div>
     </div>
 
