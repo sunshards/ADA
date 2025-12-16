@@ -103,7 +103,7 @@ class Statistic(Enum):
     WIS = "wisdom"
     CHA = "charisma"
 
-# Shoud I use """ or # for the documentation?
+
 
 # 3 tries for models distanced by a 2 second delay each one then fallback to the next one
 def narrate(history, retries=3, delay=2):
@@ -123,21 +123,6 @@ def narrate(history, retries=3, delay=2):
         print(f"[INFO] Passing to next model...")
 
     return "The narrator is temporarily out of voice. Please try again shortly."
-
-
-
-# --- Test CLI ---
-# if __name__ == "__main__":
-#     print("MAIN RUNNING")
-
-#     result = narrate(
-#         character={"nome": "Arin", "classe": "Guerriero"},
-#         state={"location": "Taverna Iniziale", "quest": "Nessuna"},
-#         user_input="Descrivi una taverna fantasy"
-#     )
-
-#     print("RESULT:")
-#     print(result)
 
 
 # We cannot trust the model to always return valid JSON, so we need to extract it from the text
@@ -250,7 +235,7 @@ def create_character_from_description(description: str) -> dict:
 
 
 
-# --- Loop di gioco CLI ---
+# --- Game Loop ---
 def main():
     # Python has to explicitly state that we are using the global variables (the serpet is cleraly not fit to be a C competitor :-P)
     global long_term_memory
