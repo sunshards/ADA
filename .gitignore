@@ -6,6 +6,7 @@ __pycache__/
 # Environments
 .env
 .venv
+uv.lock
 
 # Distribution / packaging
 .Python
