@@ -7,7 +7,4 @@ bp = Blueprint('landing', __name__,)
 
 @bp.route('/')
 def landing():
-    myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-    mydb = myclient["mydatabase"]
-    print(myclient.list_database_names())
     return render_template('landing/landing.html')
