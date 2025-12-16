@@ -65,6 +65,11 @@ def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__)
 
+    # app.config.update(
+    #     TESTING=True,
+    #     EXPLAIN_TEMPLATE_LOADING=False
+    # )
+
     # ensure the instance folder exists
     try:
         os.makedirs(app.instance_path)
@@ -135,14 +140,20 @@ def create_app(test_config=None):
         {"username" : "Anacleto", "MAX_HP": 11, "HP": 8, "percentage": 72.7 },
         {"username" : "Bimbo", "MAX_HP": 0, "HP": 0, "percentage": 0 }
     ]
-
-    # a simple page that says hello
-    @app.route('/hello')
-    def hello():
-         return render_template('character_sheet.html', character=test_character)
     
     from . import landing
     app.register_blueprint(landing.bp)
+
+    from . import auth
+    app.register_blueprint(auth.bp)
+
+    app.add_url_rule('/', endpoint='landing')
+
+    
+    @app.route('/debug')
+    def debug():
+         print(app.url_for(('auth.login')))
+         return 'Hello world'
     
     return app
 

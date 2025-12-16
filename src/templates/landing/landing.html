@@ -14,7 +14,9 @@
                     <a class="nav-link" href="#">Informazioni</a>
                 </li>
                 <li class="nav-item">
-                    <button class="btn btn-primary">Accedi</button>
+                    <a class="btn btn-primary" href="{{ url_for('auth.login') }}">
+                        Accedi
+                    </a>
                 </li>
             </ul>
             </div>
