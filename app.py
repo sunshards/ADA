@@ -94,6 +94,7 @@ turn_count = 0
 recent_history = []
 #! Make sure to change the start point, so you can get the places from the approved database
 long_term_memory = "The character is located in the Initial Tavern. No relevant events so far."
+mana_regen_per_turn = 5  # Adjust regeneration rate if desired
 
 class Statistic(Enum):
     STR = "strength"
@@ -183,11 +184,13 @@ def create_character_from_description(description: str) -> dict:
         - gold
         - xp
         - level
+        - mana
         - inventory
         - equipped_weapon
         - alignment_righteousness
         - alignment_morality
         - birthplace
+        - skills (its an empty list)
         - description
         - stats (STR, CON, DEX, INT, WIS, CHA)
 
@@ -217,12 +220,14 @@ def create_character_from_description(description: str) -> dict:
             "gold": 50,
             "xp": 0,
             "level": 1,
+            "mana": 50,
             "inventory": ["basic sword"],
             "equipped_weapon": "basic sword",
             "alignment_righteousness": "neutral",
             "alignment_morality": "neutral",
             "birthplace": "",
             "description": description,
+            "skills": [],
             "stats": {
                 Statistic.STR.value: 5,
                 Statistic.CON.value: 5,
@@ -241,6 +246,7 @@ def main():
     global long_term_memory
     global turn_count
     global recent_history
+    global mana_regen_per_turn
     print("=== ADA TI DA' IL BENVENUTO ===")
     print("\nDescribe your character in your own words (free text):")
     user_desc = input("> ")
@@ -294,6 +300,14 @@ def main():
             character["xp"]     = update_stat(character["xp"],        data.get("xp_gained",     0))
 
 
+            # Reduce mana if AI specifies a mana cost
+            if "mana_change" in data:
+                character["mana"] = update_stat(character["mana"], data["mana_change"], 0)
+            elif turn_count > 0 and turn_count % 5 == 0:
+                # Passive mana regen every 5 turns
+                character["mana"] = update_stat(character["mana"], mana_regen_per_turn, 0)
+
+
             # Update the location and current quest
             if "location" in data:
                 state["location"] = data["location"]
@@ -302,7 +316,7 @@ def main():
 
             # Print status for debugging
             print("-" * 30)
-            print(f"[Location: {state['location'].upper()}] | Quest: {state['quest'].lower()} | HP: {character['max_hp']} | Gold: {character['gold']}")
+            print(f"[Location: {state['location'].upper()}] | Quest: {state['quest'].lower()} | HP: {character['max_hp']} | Mana: {character['mana']} | Gold: {character['gold']}")
             print("-" * 30)
 
             # Print the narration
