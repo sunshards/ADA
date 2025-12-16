@@ -2,6 +2,7 @@ import os
 from flask import Flask, render_template
 from enum import Enum
 import random
+from pymongo import MongoClient
 
 class Statistic(Enum):
     STR = "STR"
@@ -68,6 +69,13 @@ def create_app(test_config=None):
     #     TESTING=True,
     #     EXPLAIN_TEMPLATE_LOADING=False
     # )
+
+    CONNECTION_STRING = "mongodb+srv://ADAdmin:yR3BZdsB3gWXGgYo@clusterada.7tjhv8u.mongodb.net/?appName=ClusterADA"
+
+    client = MongoClient(CONNECTION_STRING)
+    app.mongo_client = client
+    app.db = client["ADADatabase"]
+
 
     # ensure the instance folder exists
     try:
@@ -148,6 +156,14 @@ def create_app(test_config=None):
 
     app.add_url_rule('/', endpoint='landing')
 
+    # @app.route('/test-db')
+    # def test_db():
+    # # Try to list collections
+    #     try:
+    #         collections = app.db.list_collection_names()
+    #         return f"MongoDB works! Collections: {collections}"
+    #     except Exception as e:
+    #         return f"MongoDB connection failed: {str(e)}"
     
     @app.route('/debug')
     def debug():
