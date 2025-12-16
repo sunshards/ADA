@@ -156,14 +156,14 @@ def create_app(test_config=None):
 
     app.add_url_rule('/', endpoint='landing')
 
-    @app.route('/test-db')
-    def test_db():
-    # Try to list collections
-        try:
-            collections = app.db.list_collection_names()
-            return f"MongoDB works! Collections: {collections}"
-        except Exception as e:
-            return f"MongoDB connection failed: {str(e)}"
+    # @app.route('/test-db')
+    # def test_db():
+    # # Try to list collections
+    #     try:
+    #         collections = app.db.list_collection_names()
+    #         return f"MongoDB works! Collections: {collections}"
+    #     except Exception as e:
+    #         return f"MongoDB connection failed: {str(e)}"
     
     @app.route('/debug')
     def debug():

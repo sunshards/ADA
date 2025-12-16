@@ -1,11 +1,19 @@
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, url_for, current_app
+    Blueprint, flash, g, redirect, render_template, request, url_for
 )
 import pymongo
 
 bp = Blueprint('landing', __name__,)
 
-@bp.route('/')
+@bp.route('/', methods=('GET', 'POST'))
 def landing():
-    users = current_app.db.users.find()
+    if request.method == 'POST':
+        desc = None
+        desc = request.form.get('characterPrompt')
+        
+        if not desc:
+            error = 'Description is required.'
+        else:
+            print(desc)
+
     return render_template('landing/landing.html')
