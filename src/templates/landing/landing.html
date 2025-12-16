@@ -32,6 +32,7 @@
             <form 
             class="parent d-flex flex-column h-100 justify-content-center align-content-center "
             method="POST"
+            action="{{ url_for('creation.creation')}}"
             >
                 <label for="mainTextArea" class="form-label ">
                     <h2>Benvenuto.</h2>
@@ -42,8 +43,7 @@
                     name="characterPrompt"
                     placeholder="Inserisci la descrizione del tuo personaggio..."
                     style="overflow: auto; height: 150px; max-height: 40vh;"
-                >
-                </textarea>
+                ></textarea>
                 <input 
                     type="submit" 
                     value="Done" 
