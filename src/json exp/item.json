@@ -1,0 +1,63 @@
+[
+  {
+    "id": "longbow",
+    "name": "Longbow",
+    "itemType": "weapon",
+    "subType": "ranged",
+    "description": "Standard bow for archers, deals average physical damage",
+    "range": 30,
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "2d6"
+      }
+    ]
+  },
+
+  {
+    "id": "shortsword",
+    "name": "Short Sword",
+    "itemType": "weapon",
+    "subType": "melee",
+    "description": "Light sword, suitable for close combat",
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "1d8+1"
+      }
+    ]
+  },
+
+  {
+    "id": "magicwand",
+    "name": "Magic Wand",
+    "itemType": "magical",
+    "subType": "wand",
+    "description": "Wand for casting spells",
+    "usages": 3
+  },
+
+  {
+    "id": "healthpotion",
+    "name": "Health Potion",
+    "itemType": "consumable",
+    "subType": "potion",
+    "description": "Restores health when consumed",
+    "potionName": "Healing Potion",
+    "effects": [
+      {
+        "kind": "heal",
+        "target": "self",
+        "element": "none",
+        "radius": 0,
+        "value": "10"
+      }
+    ]
+  }
+]
