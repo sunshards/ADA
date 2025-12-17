@@ -175,12 +175,12 @@ def create_character_from_description(description: str) -> dict:
     # Load the approved skills from skill.json
     with open(skill_path, "r", encoding="utf-8") as f:
         skills_db = json.load(f)
+    with open(item_path, "r", encoding="utf-8") as f:
+        items_db = json.load(f)
     
-    skill_options = []
-    for s in skills_db:
-        skill_options.append(f"- {s['name']} (Type: {s['type']}, Min Level: {s['min_lv']}): {s['description']}")
-    
+    skill_options = [f"- {s['name']} (Type: {s['type']}, Min Level: {s['min_lv']}): {s['description']}" for s in skills_db]
     available_skills_text = "\n".join(skill_options)
+    
 
     prompt = [
             {"role": "system", "content": "You are a character creation AI. Generate a complete D&D-style character sheet in JSON format."},
@@ -200,7 +200,7 @@ def create_character_from_description(description: str) -> dict:
         - xp
         - level
         - mana
-        - inventory
+        - inventory (initially empty)
         - equipped_weapon
         - alignment_righteousness
         - alignment_morality
@@ -226,42 +226,11 @@ def create_character_from_description(description: str) -> dict:
         """}
         ] 
 
-    output = narrate(prompt)
+    
     try:
+        output = narrate(prompt)
         character = extract_json(output)
 
-        # Load approved items from the database
-        with open(item_path, "r", encoding="utf-8") as f:
-            items = json.load(f)
-
-        # Check if the equipped weapon is in the items list
-        equipped_weapon_name = character["equipped_weapon"]
-        #             V <- this is the name of a element of the list: used in the loop to create a list of weapon names
-        item_names = [w["name"] for w in items]
-        
-        # If equipped_weapon is not present in the weapon list, find the most similar one.
-        if equipped_weapon_name not in item_names:
-            most_similar, similarity = find_most_similar_item(equipped_weapon_name, items)
-
-            # Update equipped weapon
-            character["equipped_weapon"] = most_similar["name"]
-
-            # Add it to inventory if not already there
-            if most_similar["name"] not in character["inventory"]:
-                character["inventory"].append(most_similar["name"])
-        
-        # ----------------------------------------------------------
-
-        # TODO: when we add the classes database, do as above
-        # If equipped_weapon is not present in the weapon list, find the most similar one.
-        #                                       V <- this is the name of a element of the list: used in the loop to create a list of weapon names
-        if character["class"] not in [c["name"] for c in classes]:
-            result = find_most_similar_item(character["class"], classes)
-            most_similar = result[0]  # <-- Dictionary of the most similar weapon
-            similarity = result[1]    # <-- Similarity score (not used here, but could be logged) #! TBH: we have to decide if we use it or not (could be used to invent the weapon if the similarity is too low)
-            character["class"] = most_similar["name"]
-
-        return character
     except Exception as e:
         print(f"[ERROR] Failed to generate character: {e}")
         print("Using placeholder character instead.")
@@ -291,6 +260,105 @@ def create_character_from_description(description: str) -> dict:
                 "CHA": 5
             }
         }
+    
+    # --- Assign skills from DB based on AI suggestions ---
+    #? No find_most_similar_item used, because the ai already has the skills in the prompt when generated, we only need to validate
+    selected_skills = []
+    for skill_name in character.get("skills", []):
+        # Find the skill in the skills database (case-insensitive match)
+        skill = None
+        for s in skills_db:
+            if s["name"].lower() == skill_name.lower():
+                skill = s
+                break
+
+        # Add it if it's valid and not already in the selected list
+        if skill and skill["name"] not in selected_skills:
+            selected_skills.append(skill["name"])
+
+    # Fallback: if no valid skills found, pick one first matching skill
+    if not selected_skills:
+        for s in skills_db:
+            if s["type"] in ("attack", "magic", "buff", "debuff"):
+                selected_skills.append(s["name"])
+                break  # pick only the first matching skill
+
+    # Update character skills
+    character["skills"] = selected_skills
+
+    # --- Assign inventory (weapon/item) based on similarity ---
+    #? We dont ask the ai to suggest anything, we use the characher description to find the closest item that fit it
+    usable_items = []
+    for i in items_db:
+        if i["itemType"] in ("weapon", "magical", "consumable"):
+            usable_items.append(i)
+    
+    # Find the most similar item to the character description
+    best_item, similarity = find_most_similar_item(character["description"], usable_items)
+    # Similarity score (not used here, but could be logged) 
+    # #! TBH: we have to decide if we use it or not (could be used to invent the weapon if the similarity is too low)
+
+    # Start inventory with the most similar item
+    inventory = [best_item["name"]]
+
+    # Scan description for extra items (max 3 non-weapons)
+    description_lower = character["description"].lower()
+    extra_items_added = 0
+    MAX_EXTRA_ITEMS = 3
+
+    for item in usable_items:
+        if extra_items_added >= MAX_EXTRA_ITEMS:
+            break  # Stop after adding 3 extra items
+
+        # Skip if this is already the best_item
+        if item["name"] == best_item["name"]:
+            continue
+
+        item_names = [item["name"]]
+        if "potionName" in item:
+            item_names.append(item["potionName"])
+
+        for name in item_names:
+            if name.lower() in description_lower and item["name"] not in inventory:
+                # Only count non-weapons as extra items
+                if item["itemType"] != "weapon":
+                    inventory.append(item["name"])
+                    extra_items_added += 1
+                break  # Avoid adding the same item twice
+
+    character["inventory"] = inventory
+    if best_item["itemType"] in ("weapon", "magical"):
+        character["equipped_weapon"] = best_item["name"]
+    else:
+        # Try to equip the first weapon in inventory
+        for item_name in inventory:
+            item = None  # default if not found
+            for i in items_db:
+                if i["name"] == item_name:
+                    item = i
+                    break  # stop at the first match
+
+            if item and item["itemType"] == "weapon":
+                character["equipped_weapon"] = item_name
+                break
+        else: 
+            print(f"[ERROR] Failed to select a matching weapon to the description")
+            character["inventory"] = "Short Sword"
+            character["equipped_weapon"] = "Short Sword"
+
+    # ----------------------------------------------------------
+
+    # TODO: when we add the classes database, do as above
+    # If equipped_weapon is not present in the weapon list, find the most similar one.
+    #                                       V <- this is the name of a element of the list: used in the loop to create a list of weapon names
+    if character["class"] not in [c["name"] for c in classes]:
+        result = find_most_similar_item(character["class"], classes)
+        most_similar = result[0]  # <-- Dictionary of the most similar weapon
+        similarity = result[1]    # <-- Similarity score (not used here, but could be logged) #! TBH: we have to decide if we use it or not (could be used to invent the weapon if the similarity is too low)
+        character["class"] = most_similar["name"]
+
+    return character
+
 
 
 
@@ -548,6 +616,7 @@ def use_item(character, real_name, items):
         # Item consumed
         character["inventory"].remove(real_name)
         return True, f"Used {real_name}"
+
 
 
 
