@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, url_for, current_app
+    Blueprint, flash, g, redirect, render_template, request, url_for, current_app, session
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo.errors import DuplicateKeyError
@@ -9,7 +9,7 @@ bp = Blueprint('auth', __name__, url_prefix='/auth')
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
     if request.method == "POST":
-        email = request.form['email']
+        email = request.form['email'].lower().strip()
         password = request.form['password']
         
         error = None
@@ -27,7 +27,11 @@ def login():
                 error = 'Incorrect email.'
             elif not check_password_hash(user["Password"], password):
                 error = 'Incorrect password.'
-                
+            else:
+                session.clear()
+                session['user_id'] = str(user['_id'])
+                return redirect(url_for('landing.landing'))
+
         except Exception as e:
             error = f"An error occurred: {str(e)}"
 
@@ -41,7 +45,7 @@ def login():
 def register():
     if request.method == "POST":
         username = request.form['username']
-        email = request.form['email']
+        email = request.form['email'].lower().strip()
         password = request.form['password']
         
         error = None

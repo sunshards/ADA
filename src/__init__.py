@@ -23,6 +23,7 @@ def create_app(test_config=None):
 
     client = MongoClient(CONNECTION_STRING)
     app.mongo_client = client
+    
     app.db = client["ADADatabase"]
 
     users_col = app.db['Users']
