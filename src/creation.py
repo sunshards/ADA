@@ -14,7 +14,7 @@ def creation():
         return redirect(url_for('landing'))
     if request.method == 'POST':
 
-        if not global_config.config["SHEET DEBUGGING"]:
+        if not global_config.config["SHEET_DEBUGGING"]:
             desc = request.form.get('characterPrompt')
             print("desc: ", desc)
             print(desc.strip() == "")
