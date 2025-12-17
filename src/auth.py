@@ -18,6 +18,7 @@ def login():
             error = 'Password is required.'
 
         flash(error)
+        print(email, password)
     return render_template('auth/login.html')
 
 @bp.route('/register', methods=('GET', 'POST'))
@@ -35,6 +36,6 @@ def register():
             error = 'Password is required.'
         elif not email:
             error = 'Email is required.'
-
-        flash(error)
+        
+        print(username, email, password)
     return render_template('auth/register.html')
