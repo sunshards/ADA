@@ -581,20 +581,33 @@ def resolve_skill(skill, character):
 def use_item(character, real_name, items):
     real_name = real_name.strip().lower()
 
-    inventory_map = {i.lower(): i for i in character["inventory"]}
+    inventory_map = {}
+
+    for i in character["inventory"]:
+        key = i.lower()  # name of the item for case insensitive search
+        value = i        # origal name of the weapon to display
+        inventory_map[key] = value
 
     if real_name not in inventory_map:
-        return False, "Item not found"
-
+        print("Item not found")
+        return False
+        
     real_name = inventory_map[real_name]
 
     # Find item in DB
     item = next((i for i in items if i["name"] == real_name), None)
     if not item:
-        return False, "Invalid item"
+        print("Invalid item")
+        return False
+
+    # If the item is a weapon or magical, equip it
+    if item["itemType"] in ("weapon", "magical"):
+        character["equipped_weapon"] = item["name"]
+        print(f"You equip the {item['name']}.")
+        return True
+    
 
     # apply the healing effects
-    # TODO: extend to other effects if any
     for effect in item.get("effects", []):
         if effect["kind"] == "heal":
             heal, _ = roll_dice(effect["value"])
@@ -610,12 +623,14 @@ def use_item(character, real_name, items):
         item["uses"] -= 1
         if item["uses"] == 0:
             character["inventory"].remove(real_name)
-        return True, f"Used {real_name}, {item['uses']} uses left"
+        print(f"Used {real_name}, {item['uses']} uses left")
+        return True
 
     else:
         # Item consumed
         character["inventory"].remove(real_name)
-        return True, f"Used {real_name}"
+        print(f"Used {real_name}")
+        return True
 
 
 
@@ -654,7 +669,14 @@ def combat_loop(player, enemy, items):
         if action == "attack":
             weapon_item = next((i for i in items if i["name"] == player["equipped_weapon"]), None)
             result = combat_attack(player, enemy, weapon_item=weapon_item)
-            narration = f"You attack with {player['equipped_weapon']} and {result['result']} for {result['damage']} damage!"
+            
+            # Show dice rolls for weapon
+            if result["weapon_rolls"]:
+                rolls_str = " + ".join(str(r) for r in result["weapon_rolls"])
+                narration = f"You attack with {player['equipped_weapon']} and roll {rolls_str} -> total {result['damage']}, {result['result']}!"
+            else:
+                narration = f"You attack with {player['equipped_weapon']} and {result['result']} for {result['damage']} damage!"
+
 
         elif action == "use skill":
             if not player.get("skills"):
@@ -680,7 +702,12 @@ def combat_loop(player, enemy, items):
                 continue
 
             result = combat_attack(player, enemy, skill=skill)
-            narration = f"You use {skill['name']} and {result['result']} for {result['damage']} damage!"
+            if result["skill_rolls"]:
+                rolls_str = " + ".join(str(r) for r in result["skill_rolls"])
+                narration = f"You use {skill['name']} and roll {rolls_str} -> total {result['damage']}, {result['result']}!"
+            else:
+                narration = f"You use {skill['name']} and {result['result']} for {result['damage']} damage!"
+
 
 
         elif action == "use item":
