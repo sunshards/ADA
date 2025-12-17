@@ -5,7 +5,7 @@ from pymongo import MongoClient
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__)
-
+    app.config['SECRET_KEY'] = 'dev'
     # app.config.update(
     #     TESTING=True,
     #     EXPLAIN_TEMPLATE_LOADING=False
@@ -15,6 +15,7 @@ def create_app(test_config=None):
 
     client = MongoClient(CONNECTION_STRING)
     app.mongo_client = client
+    
     app.db = client["ADADatabase"]
 
     users_col = app.db['Users']
