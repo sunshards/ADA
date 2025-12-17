@@ -2,7 +2,7 @@ from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for, jsonify
 )
 
-from global_config import config
+from . import global_config
 from . import app
 from . import character
 
@@ -14,7 +14,7 @@ def creation():
         return redirect(url_for('landing'))
     if request.method == 'POST':
 
-        if not config.SHEET_DEBUGGING:
+        if not global_config.config["SHEET DEBUGGING"]:
             desc = request.form.get('characterPrompt')
             print("desc: ", desc)
             print(desc.strip() == "")
