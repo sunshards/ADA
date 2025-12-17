@@ -678,7 +678,7 @@ with open(item_path, "r", encoding="utf-8") as f:
     ITEMS_DB = json.load(f)
 
 
-def combat_loop(player, enemy, items, mode="manual"):
+def combat_loop(player, enemy, items, state, mode="manual"):
     print(f"\n[COMBAT START] You encounter a {enemy['name']}!")
 
     combat_history = []
@@ -747,8 +747,12 @@ def combat_loop(player, enemy, items, mode="manual"):
         # Call AI narrator for immersive description
         history = [
             system_rules,
-            {"role": "user", "content": f"Turn narration:\n{combat_text}\nDescribe the scene immersively in JSON with 'narration' only."}
+            {"role": "system", "content": f"Current location: {state['location']}, current quest: {state['quest']}."},
+            {"role": "system", "content": f"Character: {player['name']}, Hp: {player['current_hp']}/{player['max_hp']}, Mana: {player['mana']}, Equipped Weapon: {player['equipped_weapon']}."},
+            {"role": "user", "content": f"Turn narration:\n{combat_text}\nDescribe the scene immersively in JSON with 'narration' only, respecting the location and context."}
         ]
+        ai_output = narrate(history)
+
         ai_output = narrate(history)
         try:
             data = extract_json(ai_output)
@@ -863,8 +867,8 @@ def main():
                     "gold": 5
                 }
 
-                combat_loop(character, enemy, ITEMS_DB)
-                continue  # Dopo il combattimento si torna al loop
+                combat_loop(character, enemy, ITEMS_DB, state)
+                continue  # After the combat return to the main loop
             
             # Add/remove items from inventory
             for item in data.get("found_items", []):
