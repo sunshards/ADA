@@ -52,6 +52,7 @@
     "resistances": [],
     "immunities": []
   },
+
   {
     "_id": "orc",
     "name": "Orc",
@@ -157,5 +158,127 @@
     ],
     "resistances": [],
     "immunities": []
-  }
+  },
+  {
+    "_id": "human_thief",
+    "name": "Human Thief",
+    "description": "A nimble human rogue who relies on stealth and cunning.",
+    "type": "humanoid",
+    "level": 1,
+    "cr": 1,
+    "max_hp": {
+      "min": 8,
+      "max": 14
+    },
+    "stats": {
+      "STR": 10,
+      "DEX": 16,
+      "CON": 12,
+      "INT": 12,
+      "WIS": 10,
+      "CHA": 13
+    },
+    "ac": 14,
+    "attacks": [
+      {
+        "name": "Short Sword Stab",
+        "description": "A quick stab with a short sword, aiming for vital points.",
+        "index": 1,
+        "subType": "melee",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "1d6+3"
+          }
+        ]
+      },
+      {
+        "name": "Throwing Knife",
+        "description": "Throws a knife at a target from a distance.",
+        "index": 2,
+        "subType": "ranged",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "1d4+2"
+          }
+        ]
+      }
+    ],
+    "resistances": [],
+    "immunities": []
+},
+{
+    "_id": "red_dragon",
+    "name": "Red Dragon",
+    "description": "A massive, fire-breathing dragon with razor-sharp claws and a deadly tail.",
+    "type": "dragon",
+    "level": 10,
+    "cr": 10,
+    "max_hp": {
+      "min": 200,
+      "max": 250
+    },
+    "stats": {
+      "STR": 23,
+      "DEX": 10,
+      "CON": 21,
+      "INT": 16,
+      "WIS": 13,
+      "CHA": 19
+    },
+    "ac": 19,
+    "attacks": [
+      {
+        "name": "Claw Swipe",
+        "description": "A powerful swipe with massive claws.",
+        "index": 1,
+        "subType": "melee",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "2d10+6"
+          }
+        ]
+      },
+      {
+        "name": "Fire Breath",
+        "description": "Exhales a cone of fire, scorching everything in its path.",
+        "index": 2,
+        "subType": "ranged",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "fire",
+            "value": "10d6"
+          }
+        ]
+      },
+      {
+        "name": "Tail Strike",
+        "description": "Sweeps its heavy tail in a wide arc, crushing enemies.",
+        "index": 3,
+        "subType": "melee",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "2d8+4"
+          }
+        ]
+      }
+    ],
+    "resistances": ["fire"],
+    "immunities": []
+}
+
 ]
+

@@ -653,12 +653,6 @@ def use_item(character, real_name, items):
 
 # Parse free-text player input using AI and return one of the four actions
 def get_action_from_ai(user_input: str, character: dict) -> str:
-    """
-    Intelligent action parser that:
-    1. Analyzes user input
-    2. Checks against character's actual skills/items
-    3. Returns the best matching action with specific item/skill
-    """
     print(f"\n[AI Parser] Analyzing: '{user_input}'")
     
     # Get character's actual skills and items
