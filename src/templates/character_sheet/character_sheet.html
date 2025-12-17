@@ -43,14 +43,71 @@
         <!-- Details Row -->
 
         <dl class="row">
-            {% for term, value in character.get_sheet_terms().items() %}
             <dt class="col-sm-3">
-                {{term}}
+                Race
             </dt>
             <dd class="col-sm-9">
-                {{value}}
+                {{character["race"]}}
             </dd>
-            {% endfor %}
+            
+            <dt class="col-sm-3">
+                Class
+            </dt>
+            <dd class="col-sm-9">
+                {{character["class"]}}
+            </dd>
+
+            <dt class="col-sm-3">
+                Maximum Healthpoints
+            </dt>
+            <dd class="col-sm-9">
+                {{character["max_hp"]}}
+            </dd>
+            
+            <dt class="col-sm-3">
+                Maximum Mana
+            </dt>
+            <dd class="col-sm-9">
+                {{character["mana"]}}
+            </dd>
+
+            
+            <dt class="col-sm-3">
+                Level
+            </dt>
+            <dd class="col-sm-9">
+                {{character["level"]}}
+            </dd>
+            
+            <dt class="col-sm-3">
+                Gold
+            </dt>
+            <dd class="col-sm-9">
+                {{character["gold"]}}
+            </dd>
+            
+            <dt class="col-sm-3">
+                XP
+            </dt>
+            <dd class="col-sm-9">
+                {{character["xp"]}}
+            </dd>
+
+
+            
+            <dt class="col-sm-3">
+                Alignment
+            </dt>
+            <dd class="col-sm-9">
+                {{character["alignment_righteousness"]}} {{character["alignment_morality"]}}
+            </dd>
+            
+            <dt class="col-sm-3">
+                Birthplace
+            </dt>
+            <dd class="col-sm-9">
+                {{character["birthplace"]}}
+            </dd>
         </dl>
 
         <!-- Stats Row -->
@@ -60,10 +117,10 @@
                 <p>2</p>
             </div>
 
-            {% for stat, value in character.stats.items() %}
+            {% for stat, value in character["stats"].items() %}
             <div class="col-lg-auto col-md-4 col-sm-6 mb-2">
                 <div class="vstack align-items-center bg-secondary">
-                    <h3>{{ stat.value }}</h3>
+                    <h3>{{ stat }}</h3>
                     <div class="box">
                         <p>{{value}}</p>
                     </div>
@@ -79,21 +136,10 @@
         <!-- Skills Row -->
          <div class="row mb-2">
             <div class="col-md-6">
-                <h3>Skill In Combat</h3>
+                <h3>Skills</h3>
                 <ul class="list-group list-group-item-primary">
-                    {% for name, description in character.combat_abilities.items() %}
-                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{description}}"">
-                            {{name}}
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-
-            <div class="col-md-6">
-                <h3>Skill Out of Combat</h3>
-                <ul class="list-group list-group-item-secondary">
-                    {% for name, description in character.world_abilities.items() %}
-                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{description}}"">
+                    {% for name in character["skills"] %}
+                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="placeholder desc">
                             {{name}}
                         </li>
                     {% endfor %}
@@ -105,11 +151,11 @@
         <!-- Items Row -->
         <div class="row mb-2">
             <div class="col-md-6">
-                <h3>Equipped Items</h3>
+                <h3>Items</h3>
                 <ul class="list-group list-group-item-primary">
-                    {% for name, description in character.equip_items.items() %}
-                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{description}}"">
-                            {{name}}
+                    {% for item in character["inventory"] %}
+                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="temp description"">
+                            {{item}}
                         </li>
                     {% endfor %}
                 </ul>
@@ -120,7 +166,7 @@
     
     <script>
         // Cambia la descrizione nella text area
-        const desc = {{ character.description | tojson }};
+        const desc = {{ character["description"] | tojson }};
         $('#descriptionTextArea').val(desc);
     </script>
 

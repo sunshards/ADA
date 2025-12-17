@@ -14,5 +14,6 @@ def landing():
             error = 'Description is required.'
         else:
             print(desc)
-
     return render_template('landing/landing.html')
+
+
