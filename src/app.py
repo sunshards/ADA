@@ -1,6 +1,8 @@
 from openai import OpenAI
 from dotenv import load_dotenv
 from enum import Enum
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 import os
 import time
 import re
@@ -88,7 +90,7 @@ INSTRUCTIONS:
 }
 
 
-# add encountered Npc????
+
 
 turn_count = 0
 recent_history = []
@@ -207,6 +209,16 @@ def create_character_from_description(description: str) -> dict:
     output = narrate(prompt)
     try:
         character = extract_json(output)
+        # If equipped_weapon is not present in the weapon list, find the most similar one.
+        #                                       V <- this is the name of a element of the list: used in the loop to create a list of weapon names
+        if character["equipped_weapon"] not in [w["name"] for w in weapons]:
+            result = find_most_similar_item(character["equipped_weapon"], weapons)
+            most_similar = result[0]  # <-- Dictionary of the most similar weapon
+            similarity = result[1]    # <-- Similarity score (not used here, but could be logged) #! TBH: we have to decide if we use it or not (could be used to invent the weapon if the similarity is too low)
+            character["equipped_weapon"] = most_similar["name"]
+            if most_similar["name"] not in character["inventory"]:
+                character["inventory"].append(most_similar["name"])
+
         return character
     except Exception as e:
         print(f"[ERROR] Failed to generate character: {e}")
@@ -221,8 +233,8 @@ def create_character_from_description(description: str) -> dict:
             "xp": 0,
             "level": 1,
             "mana": 50,
-            "inventory": ["basic sword"],
-            "equipped_weapon": "basic sword",
+            "inventory": ["short sword"],
+            "equipped_weapon": "short sword",
             "alignment_righteousness": "neutral",
             "alignment_morality": "neutral",
             "birthplace": "",
@@ -237,6 +249,32 @@ def create_character_from_description(description: str) -> dict:
                 Statistic.CHA.value: 5
             }
         }
+
+#! Remember to do: uv add sklearn-env
+
+# Finds the most similar item based on description using TF-IDF and cosine similarity
+# Tutorial used: (https://www.newscatcherapi.com/blog-posts/ultimate-guide-to-text-similarity-with-python)
+def find_most_similar_item(description, items):
+    # Builds the corpus: first the character description, then all the item descriptions
+    corpus = [description] + [item['description'] for item in items]
+    
+    # TF-IDF
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform(corpus)
+    
+    # Calculate cosine similarity between the character description vector and vector of all items
+    similarity_scores = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:]).flatten()
+    
+    # Take the item with the highest similarity score
+    max_index = similarity_scores.argmax()
+    return items[max_index], similarity_scores[max_index]
+
+# Example of predefined weapons (obviusly this should be taken from the database)
+weapons = [
+    {"name": "Longbow", "description": "Standard bow for archers, deals 2-6 physical damage"},
+    {"name": "Short Sword", "description": "Light sword, suitable for close combat"},
+    {"name": "Magic Wand", "description": "Wand for casting basic spells, deals magic damage"}
+]
 
 
 
@@ -303,7 +341,7 @@ def main():
             # Reduce mana if AI specifies a mana cost
             if "mana_change" in data:
                 character["mana"] = update_stat(character["mana"], data["mana_change"], 0)
-            elif turn_count > 0 and turn_count % 5 == 0:
+            elif turn_count % 5 == 0:
                 # Passive mana regen every 5 turns
                 character["mana"] = update_stat(character["mana"], mana_regen_per_turn, 0)
 
@@ -313,6 +351,15 @@ def main():
                 state["location"] = data["location"]
             if "quest" in data:
                 state["quest"] = data["quest"]
+
+            # # Track encountered NPCs --> talk to other memebers of the group about this feature
+            #This shoud be taken from the database in a real implementation 
+            # (the named npc are remembered in the databse with their starting location and other info)
+            # if "encounter_npc" in data:
+            #     npc_name = data["encounter_npc"]
+            #     if npc_name not in encountered_npcs:
+            #         encountered_npcs.add(npc_name)
+            #         print(f"[SYSTEM] You have encountered a new NPC: {npc_name}")
 
             # Print status for debugging
             print("-" * 30)
