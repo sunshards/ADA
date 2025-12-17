@@ -1,7 +1,30 @@
 {% extends 'base.html' %}
 
 {% block css %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='chat/chat.css') }}">
+{% endblock %}
+
+{% block js %}
+    <!-- FIRST: Set user variables for JavaScript -->
+    <script type="text/javascript">
+        // Set global variables from Flask template data
+        window.userId = "{{ user_id|default('')|tojson|safe }}";
+        window.username = "{{ username|default('Anonymous')|tojson|safe }}";
+        window.avatar = "{{ url_for('static', filename='temp/avatar_animal_00001.png')|tojson|safe }}";
+        
+        // If you have different avatars per user, use this:
+        {% if avatar %}
+            window.avatar = "{{ url_for('static', filename=avatar)|tojson|safe }}";
+        {% else %}
+            window.avatar = "{{ url_for('static', filename='temp/avatar_animal_00001.png')|tojson|safe }}";
+        {% endif %}
+        
+        // Debug: log user info
+        console.log('Chat initialized for:', window.username);
+    </script>
+
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='chat/chat.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -65,9 +88,19 @@
 
                     <!-- Form -->
                     <div class="card-footer bg-body-tertiary">
-                        <textarea class="form-control no-resize" rows="3" placeholder="Type your message"></textarea>
+                        <div class="input-group">
+                            <textarea class="form-control no-resize" 
+                                    id="messageInput" 
+                                    rows="2" 
+                                    placeholder="Type your message... Press Enter to send"></textarea>
+                            <button class="btn btn-primary" id="sendButton" type="button">
+                                <i data-feather="send"></i>
+                            </button>
+                        </div>
+                        <div class="small text-muted mt-1">
+                            <span id="typingIndicator" class="d-none">Someone is typing...</span>
+                        </div>
                     </div>
-
 
                 </div>
             </div>

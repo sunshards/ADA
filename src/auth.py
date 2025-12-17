@@ -35,7 +35,6 @@ def login():
         except Exception as e:
             error = f"An error occurred: {str(e)}"
 
-
         # flash(error)
         print(error)
         print(email, password)
