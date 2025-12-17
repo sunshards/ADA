@@ -17,6 +17,8 @@ skill_path = json_path / "skill.json"
 item_path = json_path / "item.json"
 
 
+
+
 # Load the .env file -> so it takes the api key (remember to create it)
 load_dotenv()
 
@@ -466,7 +468,7 @@ def weapon_base_damage(weapon_item: dict) -> int:
 
 # Perform an attack (weapon or skill) and return combat result.
 def combat_attack(attacker: dict, defender: dict, skill: dict = None, weapon_item: dict = None) -> dict:
-    result_data = {"result": "miss", "damage": 0, "defender_hp": defender.get("hp", 0), "skill_rolls": [], "weapon_rolls": []}
+    result_data = {"result": "miss", "damage": 0, "defender_hp": defender.get("max_hp", 0), "skill_rolls": [], "weapon_rolls": []}
     
     if not hit_check(attacker, defender, skill, weapon_item):
         return result_data
@@ -485,9 +487,9 @@ def combat_attack(attacker: dict, defender: dict, skill: dict = None, weapon_ite
         total_damage += dmg["total"]
         result_data["weapon_rolls"] = dmg["rolls"]
 
-    defender["hp"] = update_stat(defender.get("hp", 100), -total_damage, 0)
+    defender["max_hp"] = update_stat(defender.get("max_hp", 100), -total_damage, 0)
     result_data["damage"] = total_damage
-    result_data["defender_hp"] = defender["hp"]
+    result_data["defender_hp"] = defender["max_hp"]
     result_data["result"] = "hit"
 
     return result_data
@@ -507,24 +509,169 @@ def resolve_skill(skill, character):
         return {"total": 0, "rolls": [], "duration": 0}
 
 
-def use_item(character, item_name, items):
-    if item_name not in character["inventory"]:
+# MAke so that if the item is a weapon it changes the equipped weapon
+def use_item(character, real_name, items):
+    real_name = real_name.strip().lower()
+
+    inventory_map = {i.lower(): i for i in character["inventory"]}
+
+    if real_name not in inventory_map:
         return False, "Item not found"
 
-    # Search if the item has uses left
-    item = next((i for i in items if i["name"] == item_name), None)
+    real_name = inventory_map[real_name]
+
+    # Find item in DB
+    item = next((i for i in items if i["name"] == real_name), None)
     if not item:
         return False, "Invalid item"
 
+    # apply the healing effects
+    # TODO: extend to other effects if any
+    for effect in item.get("effects", []):
+        if effect["kind"] == "heal":
+            heal, _ = roll_dice(effect["value"])
+            character["max_hp"] = update_stat(
+                character["max_hp"],
+                heal,
+                0,
+                character.get("max_hp", 100)
+            )
+
+    # Handle uses / consumption
     if "uses" in item and item["uses"] > 0:
         item["uses"] -= 1
         if item["uses"] == 0:
-            character["inventory"].remove(item_name)
-        return True, f"Used {item_name}, {item['uses']} uses left"
+            character["inventory"].remove(real_name)
+        return True, f"Used {real_name}, {item['uses']} uses left"
+
     else:
         # Item consumed
-        character["inventory"].remove(item_name)
-        return True, f"Used {item_name}"
+        character["inventory"].remove(real_name)
+        return True, f"Used {real_name}"
+
+
+
+
+#! in the actual database comabt loop substitute all the reference 
+#! to the items_db with a query to the database
+def get_item_by_name(name: str, items_db: list):
+    return next((i for i in items_db if i["name"] == name), None)
+
+def get_skill_by_name(name: str, skills_db: list):
+    return next((s for s in skills_db if s["name"] == name), None)
+
+with open(skill_path, "r", encoding="utf-8") as f:
+    SKILLS_DB = json.load(f)
+
+with open(item_path, "r", encoding="utf-8") as f:
+    ITEMS_DB = json.load(f)
+
+
+#!!!! in realta questo è sbagliato:
+# noi dobbiamo far narrarre all'utente e poi chat analizza il testo e resittuisce il riusltato
+# Questo è solo per testare se funziona
+def combat_loop(player, enemy, items):
+    print(f"\n[COMBAT START] You encounter a {enemy['name']}!")
+
+    combat_history = []  # Pass to AI to narrate
+
+    while player["max_hp"] > 0 and enemy["max_hp"] > 0:
+        # Show status
+        print(f"\n[Status] {player['name']} Hp: {player['max_hp']}, Mana: {player['mana']} | {enemy['name']} max_hp: {enemy['max_hp']}")
+        action = input("Choose action (attack/use skill/use item/run): ").strip().lower()
+        narration = ""
+
+        if action == "attack":
+            weapon_item = next((i for i in items if i["name"] == player["equipped_weapon"]), None)
+            result = combat_attack(player, enemy, weapon_item=weapon_item)
+            narration = f"You attack with {player['equipped_weapon']} and {result['result']} for {result['damage']} damage!"
+
+        elif action == "use skill":
+            if not player.get("skills"):
+                print("You have no skills to use!")
+                continue
+
+            print("Your skills:")
+            resolved_skills = []
+
+            for i, skill_name in enumerate(player["skills"]):
+                skill = get_skill_by_name(skill_name, SKILLS_DB)
+                if skill:
+                    resolved_skills.append(skill)
+                    print(f"{i+1}. {skill['name']} ({skill['type']})")
+
+
+            choice = input("Choose skill number: ")
+            try:
+                skill_idx = int(choice) - 1
+                skill = resolved_skills[skill_idx]
+            except:
+                print("Invalid choice!")
+                continue
+
+            result = combat_attack(player, enemy, skill=skill)
+            narration = f"You use {skill['name']} and {result['result']} for {result['damage']} damage!"
+
+
+        elif action == "use item":
+            if not player["inventory"]:
+                print("Your inventory is empty!")
+                continue
+            print("Inventory:", player["inventory"])
+            real_name = input("Choose item to use: ").strip()
+            success, msg = use_item(player, real_name, items)
+            narration = msg
+            if not success:
+                continue
+
+        elif action == "run":
+            roll = roll_d20()
+            if roll + stat_modifier(player["stats"]["DEX"]) >= 15:
+                narration = "You successfully escape the combat!"
+                print(narration)
+                return False
+            else:
+                narration = "Failed to escape!"
+        else:
+            print("Unknown action!")
+            continue
+
+        # Enemy turn if still alive
+        if enemy["max_hp"] > 0 and action != "run":
+            weapon_item = next((i for i in items if i["name"] == enemy.get("equipped_weapon", "")), None)
+            result = combat_attack(enemy, player, weapon_item=weapon_item)
+            narration += f"\n[Enemy Turn] {enemy['name']} {result['result']}s and deals {result['damage']} damage!"
+
+        # Print narration
+        print("\n" + narration)
+
+        # Add narration to history for AI to summarize or comment
+        combat_history.append({"role": "user", "content": narration})
+        # Optionally: call AI to generate immersive combat narration
+        try:
+            ai_narration = narrate([
+                system_rules,
+                alignment_prompt,
+                {"role": "system", "content": f"Long-term memory: {long_term_memory}"},
+                {"role": "system", "content": f"Character sheet: {player}"},
+                {"role": "system", "content": f"State: Enemy: {enemy}"},
+            ] + combat_history[-5:])  # last 5 messages for context
+
+            data = extract_json(ai_narration)
+            if "narration" in data:
+                print("\n" + data["narration"])
+        except Exception as e:
+            print(f"[NARRATOR ERROR] AI failed: {e}")
+
+
+enemy = {
+    "name": "Goblin",
+    "max_hp": 20,
+    "equipped_weapon": "Short Sword",
+    "stats": {"STR": 10, "DEX": 10, "CON": 8, "INT": 5, "WIS": 5, "CHA": 5},
+    "xp": 10,
+    "gold": 5
+}
 
 
 
@@ -632,7 +779,7 @@ def main():
 
             # Print status for debugging
             print("-" * 30)
-            print(f"[Location: {state['location'].upper()}] | Quest: {state['quest'].lower()} | HP: {character['max_hp']} | Mana: {character['mana']} | Gold: {character['gold']}")
+            print(f"[Location: {state['location'].upper()}] | Quest: {state['quest'].lower()} | max_hp: {character['max_hp']} | Mana: {character['mana']} | Gold: {character['gold']}")
             print("-" * 30)
 
             # Print the narration
@@ -642,6 +789,9 @@ def main():
             if turn_count > 0 and turn_count % 10 == 0:
                 print("\n[SYSTEM] Ada is sorting through her memories...")
                 long_term_memory = summarise_memory(long_term_memory, recent_history)
+            
+            #! Try tje combat function here
+            combat_loop(character, enemy, ITEMS_DB)
 
         except Exception as e:
             print(f"\n[NARRATOR ERROR] The master in confused: {e}")
