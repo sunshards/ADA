@@ -3,6 +3,7 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from pymongo.errors import DuplicateKeyError
+from bson.objectid import ObjectId
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -85,3 +86,17 @@ def register():
 
         # print(username, email, password)
     return render_template('auth/register.html')
+
+
+@bp.before_app_request
+def load_logged_in_user():
+    user_id = session.get('user_id')
+
+    if user_id is None:
+        g.user = None
+    else:
+        try:
+            g.user = current_app.db['Users'].find_one({"_id": ObjectId(user_id)})
+        except:
+            # If for some reason the ID is invalid, clear the session
+            g.user = None
