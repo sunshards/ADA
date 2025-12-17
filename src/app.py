@@ -906,7 +906,7 @@ def main():
                 print("\n[SYSTEM] Ada is sorting through her memories...")
                 long_term_memory = summarise_memory(long_term_memory, recent_history)
             
-            #! Try tje combat function here
+            #! FORCE Try the combat function here
             # combat_loop(character, enemy, ITEMS_DB)
 
         except Exception as e:
