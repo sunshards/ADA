@@ -17,38 +17,11 @@ def create_app(test_config=None):
     app.mongo_client = client
     app.db = client["ADADatabase"]
 
-
     # ensure the instance folder exists
     try:
         os.makedirs(app.instance_path)
     except OSError:
         pass
-
-    stats = ["STR", "CON", "DEX", "INT", "WIS", "CHA"]
-    combat_abilities = {
-        "Sguardo Ammiccante": "Come azione bonus, il personaggio fissa un nemico entro 9 metri. Il bersaglio deve superare un tiro salvezza su Saggezza o avere svantaggio al prossimo attacco. Non funziona su costrutti, non morti o creature senza occhi.",
-        "Conoscenza di Odori": "Il personaggio usa l’olfatto per individuare creature. Ottiene vantaggio alle prove per scoprire nemici nascosti entro 6 metri. Utile per evitare imboscate, non per infliggere danni.",
-        "Contratto con l'ASL": "Una volta per combattimento, un nemico intelligente perde la reazione nel prossimo turno, distratto da norme di sicurezza e burocrazia evocata."
-    }
-    world_abilities = {
-        "Palla di Fuego": "Crea una piccola sfera di fuoco innocua. Non infligge danni, ma può accendere oggetti, spaventare PNG o causare caos ambientale.",
-        "Abilita Assurda": "Una volta al giorno, il personaggio dichiara una competenza improbabile. L’effetto è deciso dal master ed è sempre limitato e temporaneo.",
-        "Colpo della Scimmia Furente": "Dimostrazione fisica esagerata che concede vantaggio alla prossima prova di Forza o Atletica, attirando però attenzioni indesiderate."
-    }
-
-    equip_items = {
-        "Spada Fotonica": "Arma luminosa che ignora l’oscurità e illumina l’area circostante. Infligge danni normali, niente di più. L’effetto scenico è migliore della resa pratica.",
-        "Coltello dei Fiori": "Piccola lama decorata. Utile per lavori di precisione o rituali strani. In combattimento è inferiore a qualsiasi arma seria.",
-        "Pelle durissima": "Armatura naturale che aumenta leggermente la difesa. Non può essere rimossa e rende scomodi movimenti delicati. Protegge, ma limita.",
-        "Scudo al contrario": "Scudo montato nel verso sbagliato. Fornisce una minima protezione frontale ma penalizza le prove di Destrezza. Idea pessima, ma qualcuno giura funzioni."
-    }
-    
-    world_items =  {
-        "Torcia Prismatica": "Torcia che emette luce multicolore. Non è più luminosa del normale, ma attira attenzione ovunque venga usata.",
-        "Cubo Misterioso": "Cubo di origine sconosciuta. Non reagisce a nulla. Il master decide se serve a qualcosa o se è solo una perdita di tempo.",
-        "Cubo Comune": "Un cubo assolutamente normale. Nessun effetto. È qui solo per confondere i giocatori.",
-        "Carte del Divorzio": "Documenti legali incomprensibili. Possono causare disagio sociale o risolvere situazioni burocratiche molto specifiche."
-    }
 
     messages = [
         {"type": "out", "value": "a"},
