@@ -43,7 +43,7 @@ system_rules =  {
         "encounter": false
         }
 
-        Regole:
+        Rules:
         - ALWAYS respond in English!
         - narration: narrative text only
         - If the player talks to an NPC, include the dialogue in narration.
@@ -82,6 +82,8 @@ INSTRUCTIONS:
 - Do NOT change the character's alignment unless explicitly instructed by the system.
 - Do NOT force actions; only influence tone, outcomes, and reactions.
 - If the player acts strongly against alignment, show narrative tension or consequences.
+- If the player acts passively against alignment, show internal conflict or doubt.
+- If the player acts in a way that is extremely against their alignment, the action cannot be performed outright unless there are extreme circumstances.
 """
 }
 
@@ -90,8 +92,9 @@ INSTRUCTIONS:
 
 turn_count = 0
 recent_history = []
-#! Make sure to change the strat point, so you can get the places from the approved database
+#! Make sure to change the start point, so you can get the places from the approved database
 long_term_memory = "The character is located in the Initial Tavern. No relevant events so far."
+mana_regen_per_turn = 5  # Adjust regeneration rate if desired
 
 class Statistic(Enum):
     STR = "strength"
@@ -101,7 +104,7 @@ class Statistic(Enum):
     WIS = "wisdom"
     CHA = "charisma"
 
-# Shoud I use """ or # for the documentation?
+
 
 # 3 tries for models distanced by a 2 second delay each one then fallback to the next one
 def narrate(history, retries=3, delay=2):
@@ -121,21 +124,6 @@ def narrate(history, retries=3, delay=2):
         print(f"[INFO] Passing to next model...")
 
     return "The narrator is temporarily out of voice. Please try again shortly."
-
-
-
-# --- Test CLI ---
-# if __name__ == "__main__":
-#     print("MAIN RUNNING")
-
-#     result = narrate(
-#         character={"nome": "Arin", "classe": "Guerriero"},
-#         state={"location": "Taverna Iniziale", "quest": "Nessuna"},
-#         user_input="Descrivi una taverna fantasy"
-#     )
-
-#     print("RESULT:")
-#     print(result)
 
 
 # We cannot trust the model to always return valid JSON, so we need to extract it from the text
@@ -196,11 +184,13 @@ def create_character_from_description(description: str) -> dict:
         - gold
         - xp
         - level
+        - mana
         - inventory
         - equipped_weapon
         - alignment_righteousness
         - alignment_morality
         - birthplace
+        - skills (its an empty list)
         - description
         - stats (STR, CON, DEX, INT, WIS, CHA)
 
@@ -230,12 +220,14 @@ def create_character_from_description(description: str) -> dict:
             "gold": 50,
             "xp": 0,
             "level": 1,
+            "mana": 50,
             "inventory": ["basic sword"],
             "equipped_weapon": "basic sword",
             "alignment_righteousness": "neutral",
             "alignment_morality": "neutral",
             "birthplace": "",
             "description": description,
+            "skills": [],
             "stats": {
                 Statistic.STR.value: 5,
                 Statistic.CON.value: 5,
@@ -248,12 +240,13 @@ def create_character_from_description(description: str) -> dict:
 
 
 
-# --- Loop di gioco CLI ---
+# --- Game Loop ---
 def main():
     # Python has to explicitly state that we are using the global variables (the serpet is cleraly not fit to be a C competitor :-P)
     global long_term_memory
     global turn_count
     global recent_history
+    global mana_regen_per_turn
     print("=== ADA TI DA' IL BENVENUTO ===")
     print("\nDescribe your character in your own words (free text):")
     user_desc = input("> ")
@@ -307,6 +300,14 @@ def main():
             character["xp"]     = update_stat(character["xp"],        data.get("xp_gained",     0))
 
 
+            # Reduce mana if AI specifies a mana cost
+            if "mana_change" in data:
+                character["mana"] = update_stat(character["mana"], data["mana_change"], 0)
+            elif turn_count > 0 and turn_count % 5 == 0:
+                # Passive mana regen every 5 turns
+                character["mana"] = update_stat(character["mana"], mana_regen_per_turn, 0)
+
+
             # Update the location and current quest
             if "location" in data:
                 state["location"] = data["location"]
@@ -315,7 +316,7 @@ def main():
 
             # Print status for debugging
             print("-" * 30)
-            print(f"[Location: {state['location'].upper()}] | Quest: {state['quest'].lower()} | HP: {character['max_hp']} | Gold: {character['gold']}")
+            print(f"[Location: {state['location'].upper()}] | Quest: {state['quest'].lower()} | HP: {character['max_hp']} | Mana: {character['mana']} | Gold: {character['gold']}")
             print("-" * 30)
 
             # Print the narration
