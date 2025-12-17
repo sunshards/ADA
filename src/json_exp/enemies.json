@@ -1,0 +1,55 @@
+    {
+  "_id": "goblin",
+  "name": "Goblin",
+  "description": "A small, aggressive humanoid creature that attacks in packs.",
+  "type": "humanoid",
+
+  "level": 1,
+  "cr": 1,
+
+  "max_hp": {
+    "min": 7,
+    "max": 12
+  },
+
+  "stats": {
+    "str": 8,
+    "dex": 14,
+    "con": 10,
+    "int": 8,
+    "wis": 8,
+    "cha": 6
+  },
+
+  "ac": 13,
+
+  "attacks": [
+    {
+      "name": "Scimitar Slash",
+      "description": "A quick slash with a rusty blade.",
+      "effects": [
+        {
+          "kind": "damage",
+          "target": "enemy",
+          "element": "physical",
+          "value": "1d6+1"
+        }
+      ]
+    },
+    {
+      "name": "Shortbow Shot",
+      "description": "A poorly aimed arrow fired from a shortbow.",
+      "effects": [
+        {
+          "kind": "damage",
+          "target": "enemy",
+          "element": "physical",
+          "value": "1d6+0"
+        }
+      ]
+    }
+  ],
+
+  "resistances": [],
+  "immunities": []
+}
