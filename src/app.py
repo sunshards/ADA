@@ -98,15 +98,6 @@ recent_history = []
 long_term_memory = "The character is located in the Initial Tavern. No relevant events so far."
 mana_regen_per_turn = 5  # Adjust regeneration rate if desired
 
-class Statistic(Enum):
-    STR = "strength"
-    CON = "constitution"
-    DEX = "dexterity"
-    INT = "intelligence"
-    WIS = "wisdom"
-    CHA = "charisma"
-
-
 
 # 3 tries for models distanced by a 2 second delay each one then fallback to the next one
 def narrate(history, retries=3, delay=2):
@@ -241,19 +232,20 @@ def create_character_from_description(description: str) -> dict:
             "description": description,
             "skills": [],
             "stats": {
-                Statistic.STR.value: 5,
-                Statistic.CON.value: 5,
-                Statistic.DEX.value: 5,
-                Statistic.INT.value: 5,
-                Statistic.WIS.value: 5,
-                Statistic.CHA.value: 5
+                "STR": 10,
+                "CON": 10,
+                "DEX": 10,
+                "INT": 5,
+                "WIS": 5,
+                "CHA": 5
             }
         }
 
-#! Remember to do: uv add sklearn-env
+
 
 # Finds the most similar item based on description using TF-IDF and cosine similarity
 # Tutorial used: (https://www.newscatcherapi.com/blog-posts/ultimate-guide-to-text-similarity-with-python)
+#! Remember to do: uv add scikit-learn
 def find_most_similar_item(description, items):
     # Builds the corpus: first the character description, then all the item descriptions
     corpus = [description] + [item['description'] for item in items]
@@ -269,12 +261,28 @@ def find_most_similar_item(description, items):
     max_index = similarity_scores.argmax()
     return items[max_index], similarity_scores[max_index]
 
-# Example of predefined weapons (obviusly this should be taken from the database)
+# Example of predefined weapons (obviously this should be taken from the database)
 weapons = [
     {"name": "Longbow", "description": "Standard bow for archers, deals 2-6 physical damage"},
     {"name": "Short Sword", "description": "Light sword, suitable for close combat"},
     {"name": "Magic Wand", "description": "Wand for casting basic spells, deals magic damage"}
 ]
+
+
+
+
+# TODO: Skills that do danamge add this damange to the overlall damage of the weapon equipped (if any)
+# if a skill do damage (min-max damange -> dice: of the skill do a max damange of 6 we use a d6, if 12 it does a d12), if it doesnt it has NULL as 0 damage
+# if there a buff or debuff: we lunch a dice (i dont )
+# force and intelligence could affect the damage of physical and magical weapons/skills
+# DEX is used to eccet chance to hit or not be hit and the one that starts first the turn in combat
+# if we want to add more complexity to attack we can add radius (so it can hit multiple enemies)
+
+
+
+
+
+
 
 
 
@@ -352,7 +360,7 @@ def main():
             if "quest" in data:
                 state["quest"] = data["quest"]
 
-            # # Track encountered NPCs --> talk to other memebers of the group about this feature
+            # # Track encountered NPCs --> talk to other members of the group about this feature
             #This shoud be taken from the database in a real implementation 
             # (the named npc are remembered in the databse with their starting location and other info)
             # if "encounter_npc" in data:
