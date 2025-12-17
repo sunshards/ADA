@@ -308,6 +308,7 @@ def find_most_similar_item(description, items):
 
 
 # Example of approved classes (obviously this should be taken from the database)
+#? OR we shoud just create a local classes file
 classes = [
     {"name": "Warrior", "description": "Strong melee fighter, excels in physical combat."},
     {"name": "Mage", "description": "Master of magical arts, uses spells to attack and defend."},
@@ -336,22 +337,27 @@ def roll_d20():
     return random.randint(1, 20)
 
 # it takes a dice expression like "2d6+3" and returns the result of the roll
+# Return -> Rolls: [4, 6], Total: 13
+# Rolls for narration and total for calculations
 def roll_dice(expr: str) -> int:
     # Also black magic :-)
     match = re.match(r"(\d+)d(\d+)([+-]\d+)?", expr.replace(" ", ""))
     if not match:
         return 0
-
-    n = int(match.group(1))
+    #         V  <- group 1 is the number of dice, group 2 is the die type, group 3 is the modifier (if any)
+    n =   int(match.group(1))
     die = int(match.group(2))
     mod = int(match.group(3)) if match.group(3) else 0
 
-    return sum(random.randint(1, die) for _ in range(n)) + mod
+    rolls = [random.randint(1, die) for _ in range(n)]  # Roll the dice
+    total = sum(rolls) + mod
+
+    return total, rolls
 
 
 # Stat modifier calculation (D&D style)
 # 10 is the average, every 2 points above or below gives +1 or -1 modifier
-#                                   V <- the funztion is expeted to return an integer
+#                                   V <- the function is expeted to return an integer
 def stat_modifier(stat_value: int) -> int:
     return (stat_value - 10) // 2
 
@@ -365,41 +371,122 @@ def stat_scaling(skill_type, stats):
 
 #magic always hit, but the physical can miss based on DEX/STR stat (bows use a dex check, melee weapons use a str check)
 # roll d20 + stat scaling vs 10 + enemy DEX check
-def hit_check(attacker, defender, skill=None):
+def hit_check(attacker: dict, defender: dict, skill: dict = None, weapon_item: dict = None) -> bool:
     # Magic always hits
     if skill and skill["type"] in ("magic", "buff", "debuff"):
-        if skill["mana_cost"] <= attacker["mana"]:
-            attacker["mana"] = update_stat(attacker["mana"], -skill["mana_cost"], 0, 100)
-            return True
-    if weapon["type"] == "magical":
+        if skill.get("effects") and any("mana_cost" in e for e in skill["effects"]):
+                    mana_cost = sum(e.get("mana_cost", 0) for e in skill["effects"])
+                    if attacker["mana"] < mana_cost:
+                        return False  # Not enough mana
+                    attacker["mana"] = update_stat(attacker["mana"], -mana_cost, 0)
         return True
 
-    weapon = attacker["equipped_weapon"].lower()
+    # Determine weapon type
+    if weapon_item is None:
+        # Fallback: find in inventory by name
+        return False  # No weapon data, assume miss
 
-    # Stat used to hit
-    if weapon["type"] == "ranged":
+    sub_type = weapon_item.get("subType", "melee")
+    if sub_type == "ranged":
         attack_stat = attacker["stats"]["DEX"]
-    elif weapon["type"] == "melee":
+    elif sub_type == "melee":
+        attack_stat = attacker["stats"]["STR"]
+    else:
         attack_stat = attacker["stats"]["STR"]
 
-    attack_roll = random.randint(1, 20) + stat_modifier(attack_stat)
-    defense = 10 + stat_modifier(defender["stats"]["DEX"])
+    attack_roll = roll_d20() + stat_modifier(attack_stat)
+    defense_roll = 10 + stat_modifier(defender["stats"]["DEX"])
+    return attack_roll >= defense_roll
 
-    return attack_roll >= defense
 
 def skill_damage(skill, character):
     total = 0
+    all_rolls = []
 
     for effect in skill.get("effects", []):
         if effect["kind"] == "damage":
-            dmg = roll_dice(effect["value"])
+            dmg_total, rolls = roll_dice(effect["value"])
+            all_rolls.extend(rolls)
+            total += dmg_total
+
+    scaling = stat_scaling(skill["type"], character["stats"])
+    total += scaling
+
+    return {"total": max(0, total), "rolls": all_rolls, "scaling": scaling}
+
+def skill_buff(skill, character):
+    total = 0
+    all_rolls = []
+    duration = 0
+
+    for effect in skill.get("effects", []):
+        if effect["kind"] == "buff":
+            buff_total, rolls = roll_dice(effect["value"])
+            all_rolls.extend(rolls)
+            total += buff_total
+            if "duration" in effect:
+                duration, _ = roll_dice(effect["duration"])
+
+    return {"total": total, "rolls": all_rolls, "duration": duration}
+
+
+def skill_debuff(skill, character):
+    total = 0
+    all_rolls = []
+    duration = 0
+
+    for effect in skill.get("effects", []):
+        if effect["kind"] == "debuff":
+            debuff_total, rolls = roll_dice(effect["value"])
+            all_rolls.extend(rolls)
+            total += debuff_total
+            if "duration" in effect:
+                duration, _ = roll_dice(effect["duration"])
+
+    return {"total": total, "rolls": all_rolls, "duration": duration}
+
+
+def weapon_base_damage(weapon_item: dict) -> int:
+    total = 0
+    all_rolls = []
+
+    for effect in weapon_item.get("effects", []):
+        if effect["kind"] == "damage":
+            dmg, rolls = roll_dice(effect["value"])
             total += dmg
+            all_rolls.extend(rolls)
 
-    total += stat_scaling(skill["type"], character["stats"])
-    return max(0, total)
+    return {"total": total, "rolls": all_rolls}
 
 
-# the weapons are superclass of items, 
+# Perform an attack (weapon or skill) and return combat result.
+def combat_attack(attacker: dict, defender: dict, skill: dict = None, weapon_item: dict = None) -> dict:
+    if not hit_check(attacker, defender, skill, weapon_item):
+        return {"result": "miss", "damage": 0, "defender_hp": defender.get("hp", 0)}
+
+    damage = 0
+    if skill:
+        damage += skill_damage(skill, attacker)
+    if weapon_item and (skill is None or skill["type"] == "attack"):
+        damage += weapon_base_damage(weapon_item)
+
+    defender["hp"] = update_stat(defender.get("hp", 100), -damage, 0)
+    return {"result": "hit", "damage": damage, "defender_hp": defender["hp"]}
+
+
+
+
+# if skill["type"] == "attack":
+#     result = skill_damage(skill, character)
+# elif skill["type"] == "buff":
+#     result = skill_buff(skill, character)
+# elif skill["type"] == "debuff":
+#     result = skill_debuff(skill, character)
+
+# print(result)
+
+# !DEPRECTED(?)
+# # the weapons are superclass of items, 
 # it taskes the id, it sees into the speelname form what it can use and jump to the skill json to get the damage and other stats
 
 # the potion are used only once then they are removed from the inventory -> imp
