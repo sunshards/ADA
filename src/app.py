@@ -80,6 +80,7 @@ alignment_righteousness:
 - chaotic: distrusts authority, values freedom over order
 
 INSTRUCTIONS:
+- USE ONLY the ALIGNMENT described here, do NOT invent new alignments.
 - Always narrate the world, NPC reactions, and consequences in a way consistent with the character's alignments.
 - Do NOT change the character's alignment unless explicitly instructed by the system.
 - Do NOT force actions; only influence tone, outcomes, and reactions.
