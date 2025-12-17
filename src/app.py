@@ -7,6 +7,7 @@ import os
 import time
 import re
 import json
+import random
 
 # Load the .env file -> so it takes the api key (remember to create it)
 load_dotenv()
@@ -279,10 +280,46 @@ weapons = [
 # DEX is used to eccet chance to hit or not be hit and the one that starts first the turn in combat
 # if we want to add more complexity to attack we can add radius (so it can hit multiple enemies)
 
+#magic always hit, but the physical can miss based on DEX/STR stat (bows use a dex check, melee weapons use a str check)
+# roll d20 + stat scaling vs 10 + enemy DEX check
+
+def roll_d6():
+    return random.randint(1, 6)
+
+def roll_d8():
+    return random.randint(1, 8)
+
+def roll_d12():
+    return random.randint(1, 12)
+
+def roll_d20():
+    return random.randint(1, 20)
+
+# it takes a dice expression like "2d6+3" and returns the result of the roll
+def roll_dice(expr: str) -> int:
+    match = re.match(r"(\d+)d(\d+)([+-]\d+)?", expr.replace(" ", ""))
+    if not match:
+        return 0
+
+    n = int(match.group(1))
+    die = int(match.group(2))
+    mod = int(match.group(3)) if match.group(3) else 0
+
+    return sum(random.randint(1, die) for _ in range(n)) + mod
 
 
+# Stat modifier calculation (D&D style)
+# 10 is the average, every 2 points above or below gives +1 or -1 modifier
+def stat_modifier(stat_value: int) -> int:
+    return (stat_value - 10) // 2
 
 
+def stat_scaling(skill_type, stats):
+    if skill_type in ["physical"]:
+        return stat_modifier(stats["STR"])
+    if skill_type in ["magic"]:
+        return stat_modifier(stats["INT"])
+    return 0
 
 
 

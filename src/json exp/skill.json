@@ -1,0 +1,169 @@
+{
+    "_id": "fire_bolt",
+    "name": "Fire Bolt",
+    "description": "A small bolt of fire that burns a single enemy.",
+    "type": "magic",
+    "min_lv": 1,
+    "expected_lv": 2,
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "fire",
+        "value": "1d8+2"
+      }
+    ]
+  }
+  
+  
+  {
+    "_id": "fireball",
+    "name": "Fireball",
+    "description": "An explosion of fire that damages all enemies in an area.",
+    "type": "magic",
+    "min_lv": 5,
+    "expected_lv": 7,
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "area",
+        "element": "fire",
+        "radius": 3,
+        "value": "2d8+4"
+      }
+    ]
+  }
+  
+  {
+    "_id": "power_strike",
+    "name": "Power Strike",
+    "description": "A heavy melee attack that deals increased damage.",
+    "type": "attack",
+    "min_lv": 2,
+    "expected_lv": 3,
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "physical",
+        "scaling": "weapon",
+        "value": "2d6+3"
+      }
+    ]
+  }
+  
+  
+  {
+    "_id": "haste",
+    "name": "Haste",
+    "description": "Increases movement and attack speed
+    .",
+    "type": "buff",
+    "min_lv": 3,
+    "expected_lv": 4,
+    "effects": [
+      {
+        "kind": "buff",
+        "target": "ally",
+        "stat": "DEX",
+        "mode": "percentage",
+        "value": "1d10+5",
+        "duration": "1d4+0"
+      }
+    ]
+  }
+  
+  
+  {
+    "_id": "crippling_curse",
+    "name": "Crippling Curse",
+    "description": "Reduces the target's strength.",
+    "type": "magic",
+    "min_lv": 4,
+    "expected_lv": 5,
+    "effects": [
+      {
+        "kind": "debuff",
+        "target": "enemy",
+        "stat": "STR",
+        "mode": "flat",
+        "value": "1d4+1",
+        "duration": "1d4+0"
+      }
+    ]
+  }
+  
+  {
+    "_id": "heal",
+    "name": "Heal",
+    "description": "Restores health to an ally.",
+    "type": "magic",
+    "min_lv": 1,
+    "expected_lv": 1,
+    "effects": [
+      {
+        "kind": "heal",
+        "target": "ally",
+        "value": "2d6+3"
+      }
+    ]
+  }
+  
+  {
+    "_id": "shield_bash",
+    "name": "Shield Bash",
+    "description": "Bashes the enemy and stuns them.",
+    "type": "attack",
+    "min_lv": 3,
+    "expected_lv": 4,
+    "effects": [
+      {
+        "kind": "stun",
+        "target": "enemy",
+        "duration": "1d2+0"
+      }
+    ]
+  }
+  
+  {
+    "_id": "shield_bash",
+    "name": "Shield Bash",
+    "description": "Bashes the enemy and stuns them.",
+    "type": "attack",
+    "min_lv": 3,
+    "expected_lv": 4,
+    "effects": [
+      {
+        "kind": "stun",
+        "target": "enemy",
+        "duration": "1d2+0"
+      }
+    ]
+  }
+  
+  {
+    "_id": "frost_bite",
+    "name": "Frost Bite",
+    "description": "Deals cold damage and slows the enemy.",
+    "type": "magic",
+    "min_lv": 4,
+    "expected_lv": 5,
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "ice",
+        "value": "3d6+2"
+      },
+      {
+        "kind": "debuff",
+        "target": "enemy",
+        "stat": "DEX",
+        "mode": "percentage",
+        "value": "1d20+5",
+        "duration": "1d3+0"
+      }
+    ]
+  }
+  
+  
