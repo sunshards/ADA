@@ -466,29 +466,68 @@ def weapon_base_damage(weapon_item: dict) -> int:
 
 # Perform an attack (weapon or skill) and return combat result.
 def combat_attack(attacker: dict, defender: dict, skill: dict = None, weapon_item: dict = None) -> dict:
+    result_data = {"result": "miss", "damage": 0, "defender_hp": defender.get("hp", 0), "skill_rolls": [], "weapon_rolls": []}
+    
     if not hit_check(attacker, defender, skill, weapon_item):
-        return {"result": "miss", "damage": 0, "defender_hp": defender.get("hp", 0)}
+        return result_data
 
-    damage = 0
+    total_damage = 0
+
+    # Skill
     if skill:
-        damage += skill_damage(skill, attacker)
+        dmg = skill_damage(skill, attacker)
+        total_damage += dmg["total"]
+        result_data["skill_rolls"] = dmg["rolls"]
+
+    # Weapon
     if weapon_item and (skill is None or skill["type"] == "attack"):
-        damage += weapon_base_damage(weapon_item)
+        dmg = weapon_base_damage(weapon_item)
+        total_damage += dmg["total"]
+        result_data["weapon_rolls"] = dmg["rolls"]
 
-    defender["hp"] = update_stat(defender.get("hp", 100), -damage, 0)
-    return {"result": "hit", "damage": damage, "defender_hp": defender["hp"]}
+    defender["hp"] = update_stat(defender.get("hp", 100), -total_damage, 0)
+    result_data["damage"] = total_damage
+    result_data["defender_hp"] = defender["hp"]
+    result_data["result"] = "hit"
+
+    return result_data
 
 
 
 
-# if skill["type"] == "attack":
-#     result = skill_damage(skill, character)
-# elif skill["type"] == "buff":
-#     result = skill_buff(skill, character)
-# elif skill["type"] == "debuff":
-#     result = skill_debuff(skill, character)
+# Determine the type of skill and call the appropriate function.
+def resolve_skill(skill, character):
+    if skill["type"] == "attack":
+        return skill_damage(skill, character)
+    elif skill["type"] == "buff":
+        return skill_buff(skill, character)
+    elif skill["type"] == "debuff":
+        return skill_debuff(skill, character)
+    else:
+        return {"total": 0, "rolls": [], "duration": 0}
 
-# print(result)
+
+def use_item(character, item_name, items):
+    if item_name not in character["inventory"]:
+        return False, "Item not found"
+
+    # Search if the item has uses left
+    item = next((i for i in items if i["name"] == item_name), None)
+    if not item:
+        return False, "Invalid item"
+
+    if "uses" in item and item["uses"] > 0:
+        item["uses"] -= 1
+        if item["uses"] == 0:
+            character["inventory"].remove(item_name)
+        return True, f"Used {item_name}, {item['uses']} uses left"
+    else:
+        # Item consumed
+        character["inventory"].remove(item_name)
+        return True, f"Used {item_name}"
+
+
+
 
 # !DEPRECTED(?)
 # # the weapons are superclass of items, 
@@ -496,7 +535,7 @@ def combat_attack(attacker: dict, defender: dict, skill: dict = None, weapon_ite
 
 # the potion are used only once then they are removed from the inventory -> imp
 # nell'inventario c'è la baccheta con gli usi effetivi, poi non la puoi piu usare
-# mettere un sistema per ricaricarla
+# dopo 20 turni si ricarica
 
 
 
