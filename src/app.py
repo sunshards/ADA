@@ -302,31 +302,30 @@ def create_character_from_description(description: str) -> dict:
     inventory = [best_item["name"]]
 
     # Scan description for extra items (max 3 non-weapons)
-    description_lower = character["description"].lower()
     extra_items_added = 0
     MAX_EXTRA_ITEMS = 3
 
+    # Separate usable items into weapons and non-weapons
+    all_non_weapon_items = []
     for item in usable_items:
-        if extra_items_added >= MAX_EXTRA_ITEMS:
-            break  # Stop after adding 3 extra items
-
-        # Skip if this is already the best_item
+        if item["itemType"] == "weapon":
+            continue  # skip weapons
         if item["name"] == best_item["name"]:
-            continue
+            continue  # skip the already selected best item
+        all_non_weapon_items.append(item)
 
-        item_names = [item["name"]]
-        if "potionName" in item:
-            item_names.append(item["potionName"])
+    non_weapon_items = all_non_weapon_items
 
-        for name in item_names:
-            if name.lower() in description_lower and item["name"] not in inventory:
-                # Only count non-weapons as extra items
-                if item["itemType"] != "weapon":
-                    inventory.append(item["name"])
-                    extra_items_added += 1
-                break  # Avoid adding the same item twice
+    while extra_items_added < MAX_EXTRA_ITEMS and non_weapon_items:
+        # Find the most similar consumable to the character description
+        next_item, sim = find_most_similar_item(character["description"], non_weapon_items)
+        inventory.append(next_item["name"])
+        extra_items_added += 1
+        # Remove it from the pool to avoid duplicates
+        non_weapon_items.remove(next_item)
 
     character["inventory"] = inventory
+
     if best_item["itemType"] in ("weapon", "magical"):
         character["equipped_weapon"] = best_item["name"]
     else:
@@ -356,6 +355,9 @@ def create_character_from_description(description: str) -> dict:
         most_similar = result[0]  # <-- Dictionary of the most similar weapon
         similarity = result[1]    # <-- Similarity score (not used here, but could be logged) #! TBH: we have to decide if we use it or not (could be used to invent the weapon if the similarity is too low)
         character["class"] = most_similar["name"]
+    
+    # Current HP for combat tracking
+    character["current_hp"] = character["max_hp"]
 
     return character
 
@@ -414,7 +416,7 @@ def roll_d20():
 # it takes a dice expression like "2d6+3" and returns the result of the roll
 # Return -> Rolls: [4, 6], Total: 13
 # Rolls for narration and total for calculations
-def roll_dice(expr: str) -> int:
+def roll_dice(expr: str):
     # Also black magic :-)
     match = re.match(r"(\d+)d(\d+)([+-]\d+)?", expr.replace(" ", ""))
     if not match:
@@ -535,8 +537,8 @@ def weapon_base_damage(weapon_item: dict) -> int:
 
 
 # Perform an attack (weapon or skill) and return combat result.
-def combat_attack(attacker: dict, defender: dict, skill: dict = None, weapon_item: dict = None) -> dict:
-    result_data = {"result": "miss", "damage": 0, "defender_hp": defender.get("max_hp", 0), "skill_rolls": [], "weapon_rolls": []}
+def combat_attack(attacker, defender, skill=None, weapon_item=None):
+    result_data = {"result": "miss", "damage": 0, "defender_hp": defender.get("current_hp", 0), "skill_rolls": [], "weapon_rolls": []}
     
     if not hit_check(attacker, defender, skill, weapon_item):
         return result_data
@@ -555,12 +557,13 @@ def combat_attack(attacker: dict, defender: dict, skill: dict = None, weapon_ite
         total_damage += dmg["total"]
         result_data["weapon_rolls"] = dmg["rolls"]
 
-    defender["max_hp"] = update_stat(defender.get("max_hp", 100), -total_damage, 0)
+    defender["current_hp"] = update_stat(defender.get("current_hp", 0), -total_damage, 0, defender["max_hp"])
     result_data["damage"] = total_damage
-    result_data["defender_hp"] = defender["max_hp"]
+    result_data["defender_hp"] = defender["current_hp"]
     result_data["result"] = "hit"
 
     return result_data
+
 
 
 
@@ -580,57 +583,55 @@ def resolve_skill(skill, character):
 # MAke so that if the item is a weapon it changes the equipped weapon
 def use_item(character, real_name, items):
     real_name = real_name.strip().lower()
-
-    inventory_map = {}
-
-    for i in character["inventory"]:
-        key = i.lower()  # name of the item for case insensitive search
-        value = i        # origal name of the weapon to display
-        inventory_map[key] = value
+    inventory_map = {i.lower(): i for i in character["inventory"]}
 
     if real_name not in inventory_map:
-        print("Item not found")
-        return False
-        
-    real_name = inventory_map[real_name]
+        return False, "Item not found"
 
-    # Find item in DB
+    real_name = inventory_map[real_name]
     item = next((i for i in items if i["name"] == real_name), None)
     if not item:
-        print("Invalid item")
-        return False
+        return False, "Invalid item"
 
-    # If the item is a weapon or magical, equip it
+    # Equip weapon/magical
     if item["itemType"] in ("weapon", "magical"):
         character["equipped_weapon"] = item["name"]
-        print(f"You equip the {item['name']}.")
-        return True
-    
+        return True, f"You equip the {item['name']}."
 
-    # apply the healing effects
+    # Healing or fixed effect
     for effect in item.get("effects", []):
         if effect["kind"] == "heal":
-            heal, _ = roll_dice(effect["value"])
-            character["max_hp"] = update_stat(
-                character["max_hp"],
-                heal,
-                0,
-                character.get("max_hp", 100)
-            )
+            value = str(effect["value"]).strip()
 
-    # Handle uses / consumption
+            # Detect dice expression like 3d6+2
+            dice_pattern = r"^\d+d\d+([+-]\d+)?$"
+            if re.match(dice_pattern, value):
+                heal, rolls = roll_dice(value)
+                character["current_hp"] = update_stat(character["current_hp"], heal, 0, character["max_hp"])
+                return True, f"You heal for {heal} HP (rolls: {rolls})"
+            else:
+                # Treat as fixed number
+                try:
+                    heal = int(value)
+                except:
+                    heal = 0
+                character["current_hp"] = update_stat(character["current_hp"], heal, 0, character["max_hp"])
+                return True, f"You heal for {heal} HP."
+
+    # Handle consumable uses
     if "uses" in item and item["uses"] > 0:
         item["uses"] -= 1
         if item["uses"] == 0:
             character["inventory"].remove(real_name)
-        print(f"Used {real_name}, {item['uses']} uses left")
-        return True
+        return True, f"Used {real_name}, {item['uses']} uses left"
 
-    else:
-        # Item consumed
-        character["inventory"].remove(real_name)
-        print(f"Used {real_name}")
-        return True
+    # Default: remove consumable
+    character["inventory"].remove(real_name)
+    return True, f"Used {real_name}"
+
+
+
+
 
 
 
@@ -662,7 +663,7 @@ def combat_loop(player, enemy, items):
 
     while player["max_hp"] > 0 and enemy["max_hp"] > 0:
         # Show status
-        print(f"\n[Status] {player['name']} Hp: {player['max_hp']}, Mana: {player['mana']} | {enemy['name']} max_hp: {enemy['max_hp']}")
+        print(f"\n[Status] {player['name']} Hp: {player['current_hp']}/{player['max_hp']}, Mana: {player['mana']} | {enemy['name']} max_hp: {enemy['max_hp']}")
         action = input("Choose action (attack/use skill/use item/run): ").strip().lower()
         narration = ""
 
@@ -716,8 +717,8 @@ def combat_loop(player, enemy, items):
                 continue
             print("Inventory:", player["inventory"])
             real_name = input("Choose item to use: ").strip()
-            success, msg = use_item(player, real_name, items)
-            narration = msg
+            
+            success, narration = use_item(player, real_name, items)  # <-- returns only True/False
             if not success:
                 continue
 
