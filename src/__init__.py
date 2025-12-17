@@ -17,6 +17,10 @@ def create_app(test_config=None):
     app.mongo_client = client
     app.db = client["ADADatabase"]
 
+    users_col = app.db['Users']
+    users_col.create_index('Email', unique=True)
+    users_col.create_index('Username', unique=True)
+
     # ensure the instance folder exists
     try:
         os.makedirs(app.instance_path)
