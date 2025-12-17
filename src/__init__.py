@@ -1,64 +1,6 @@
 import os
 from flask import Flask, render_template
-from enum import Enum
-import random
-
-class Statistic(Enum):
-    STR = "STR"
-    CON = "CON"
-    DEX = "DEX"
-    INT = "INT"
-    WIS = "WIS"
-    CHA = "CHA"
-
-class AlignmentMorality(Enum):
-    GOOD = "Good"
-    NEUTRAL = "Neutral"
-    EVIL = "Evil"
-
-class AlignmentRighteousness(Enum):
-    LAWFUL = "Lawful"
-    NEUTRAL = "Neutral"
-    CHAOTIC = "Chaotic"
-
-class Character:
-    # livello
-    # hp massimi
-    # milestones
-
-    def __init__(self, 
-                 name : str, 
-                 stats : dict[Statistic, int], 
-                 combat_abilities : dict[str, str],
-                 world_abilities: dict[str, str], 
-                 equip_items: dict[str, str], 
-                 world_items: dict[str, str], 
-                 dnd_race: str,
-                 dnd_class: str,
-                 alignment_righteousness : AlignmentRighteousness,
-                 alignment_morality : AlignmentMorality,
-                 birthplace : str = "",
-                 description : str = ""):
-        self.name = name
-        self.description = description
-        self.stats = stats
-        self.combat_abilities = combat_abilities
-        self.world_abilities = world_abilities
-        self.equip_items = equip_items
-        self.world_items = world_items
-        self.dnd_race = dnd_race
-        self.dnd_class = dnd_class
-        self.birthplace = birthplace
-        self.alignment_morality = alignment_morality
-        self.alignment_righteousness = alignment_righteousness
-
-    def get_sheet_terms(self):
-        return {
-            "Race" : self.dnd_race,
-            "Class" : self.dnd_class,
-            "Alignment" : self.alignment_righteousness.value + " " + self.alignment_morality.value,
-            "Birthplace" : self.birthplace
-        }
+from pymongo import MongoClient
 
 def create_app(test_config=None):
     # create and configure the app
@@ -68,6 +10,13 @@ def create_app(test_config=None):
     #     TESTING=True,
     #     EXPLAIN_TEMPLATE_LOADING=False
     # )
+
+    CONNECTION_STRING = "mongodb+srv://ADAdmin:yR3BZdsB3gWXGgYo@clusterada.7tjhv8u.mongodb.net/?appName=ClusterADA"
+
+    client = MongoClient(CONNECTION_STRING)
+    app.mongo_client = client
+    app.db = client["ADADatabase"]
+
 
     # ensure the instance folder exists
     try:
@@ -101,25 +50,6 @@ def create_app(test_config=None):
         "Carte del Divorzio": "Documenti legali incomprensibili. Possono causare disagio sociale o risolvere situazioni burocratiche molto specifiche."
     }
 
-    stats = {stat : random.randint(0,12) for stat in list(Statistic)}
-
-    name = "Pippo"
-
-    desc = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam, itaque voluptatum harum tempore consequuntur rerum, tempora suscipit aliquid, qui ad provident dolorum repudiandae quisquam doloremque cum? Placeat, hic optio! Sapiente exercitationem vero molestiae doloribus, fugiat autem ullam nesciunt cumque dolores itaque eum illum aperiam optio eveniet earum! Sequi placeat nesciunt numquam dolor neque nostrum voluptatibus. Adipisci velit itaque incidunt dolorum, aperiam excepturi natus amet accusantium dolorem saepe architecto sequi quis tempora. Animi ratione fugit officia sed quis? Officiis qui optio est eaque corrupti iste, iusto, accusamus reprehenderit velit vel tempora soluta dolore at doloremque ipsum ipsa vero animi unde quidem."
-    
-    test_character = Character(name, 
-                               stats, 
-                               combat_abilities=combat_abilities, 
-                               world_abilities=world_abilities, 
-                               equip_items=equip_items, 
-                               world_items=world_items,
-                               dnd_race = "Orc",
-                               dnd_class = "Mage",
-                               alignment_righteousness = AlignmentRighteousness.LAWFUL,
-                               alignment_morality = AlignmentMorality.GOOD,
-                               birthplace = "Mordor", 
-                               description=desc)
-
     messages = [
         {"type": "out", "value": "a"},
         {"type": "out", "value": "b"},
@@ -146,8 +76,19 @@ def create_app(test_config=None):
     from . import auth
     app.register_blueprint(auth.bp)
 
+    from . import creation
+    app.register_blueprint(creation.bp)
+
     app.add_url_rule('/', endpoint='landing')
 
+    # @app.route('/test-db')
+    # def test_db():
+    # # Try to list collections
+    #     try:
+    #         collections = app.db.list_collection_names()
+    #         return f"MongoDB works! Collections: {collections}"
+    #     except Exception as e:
+    #         return f"MongoDB connection failed: {str(e)}"
     
     @app.route('/debug')
     def debug():
