@@ -1,7 +1,15 @@
 {% extends 'base.html' %}
 
 {% block css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='character_sheet.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='character_sheet/character_sheet.css') }}">
+{% endblock %}
+
+{% block js %}
+    <script>
+        // url inserted by the jinja render_template() 
+        const uploadUrl = "{{ url_for('creation.upload') }}";
+    </script>
+    <script type="text/javascript" src="{{ url_for('static', filename='character_sheet/character_sheet.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -17,16 +25,25 @@
         <div class="row mb-2">
             <div class="col-lg-4 col-md-4 col-sm-12 d-flex flex-column align-items-center gap-2 mb-3">
                         <img 
-                            src="{{ url_for('static', filename='temp/avatar_placeholder.jpeg') }}" 
+                            id="character-avatar-image"
+                            src="{{ url_for('static', filename='temp/avatar_animal_00001.png') }}" 
                             alt="User avatar"
-                            class="img-fluid mt-5"
+                            class="img-fluid mt-5 avatar"
                         >
                         <button 
-                            type="button" 
-                            class="btn btn-primary align-self-stretch mx-2"
-                        >
-                            Upload image...
-                        </button>
+                        class = "btn btn-primary"
+                        id="character-avatar-button">
+                            <i data-feather="upload"></i>
+                            Upload file
+                        </label>
+                        <input type="file" 
+                        id="character-avatar-input" 
+                        name="character-avatar-input" 
+                        accept="image/png, image/jpeg"
+                        class="file-upload"
+                        />
+                        </input>
+
             </div>
             <div class="col-lg-8 col-md-8 col-sm-12 align-content-center my-2">
                 <label for="descriptionTextArea" class="form-label">Descrizione del personaggio</label>

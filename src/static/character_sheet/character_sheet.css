@@ -1,0 +1,13 @@
+.no-resize {
+  resize: none !important;
+}
+
+.file-upload {
+      display: none;
+}
+
+.avatar {
+  border: 2px solid black;
+  width: 200px;
+  aspect-ratio: 1 / 1;
+}
