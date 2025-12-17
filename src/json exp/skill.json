@@ -1,4 +1,5 @@
-{
+[
+  {
     "_id": "fire_bolt",
     "name": "Fire Bolt",
     "description": "A small bolt of fire that burns a single enemy.",
@@ -13,9 +14,7 @@
         "value": "1d8+2"
       }
     ]
-  }
-  
-  
+  },
   {
     "_id": "fireball",
     "name": "Fireball",
@@ -32,8 +31,7 @@
         "value": "2d8+4"
       }
     ]
-  }
-  
+  },
   {
     "_id": "power_strike",
     "name": "Power Strike",
@@ -50,14 +48,11 @@
         "value": "2d6+3"
       }
     ]
-  }
-  
-  
+  },
   {
     "_id": "haste",
     "name": "Haste",
-    "description": "Increases movement and attack speed
-    .",
+    "description": "Increases movement and attack speed.",
     "type": "buff",
     "min_lv": 3,
     "expected_lv": 4,
@@ -71,9 +66,7 @@
         "duration": "1d4+0"
       }
     ]
-  }
-  
-  
+  },
   {
     "_id": "crippling_curse",
     "name": "Crippling Curse",
@@ -91,8 +84,7 @@
         "duration": "1d4+0"
       }
     ]
-  }
-  
+  },
   {
     "_id": "heal",
     "name": "Heal",
@@ -107,8 +99,7 @@
         "value": "2d6+3"
       }
     ]
-  }
-  
+  },
   {
     "_id": "shield_bash",
     "name": "Shield Bash",
@@ -123,8 +114,7 @@
         "duration": "1d2+0"
       }
     ]
-  }
-  
+  },
   {
     "_id": "shield_bash",
     "name": "Shield Bash",
@@ -139,8 +129,7 @@
         "duration": "1d2+0"
       }
     ]
-  }
-  
+  },
   {
     "_id": "frost_bite",
     "name": "Frost Bite",
@@ -165,5 +154,6 @@
       }
     ]
   }
+]
   
   

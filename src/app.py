@@ -211,6 +211,14 @@ def create_character_from_description(description: str) -> dict:
             character["equipped_weapon"] = most_similar["name"]
             if most_similar["name"] not in character["inventory"]:
                 character["inventory"].append(most_similar["name"])
+        
+        # If class is not compatible with the weapon, find the most similar one.
+        #                             V <- this is the name of a element of the list: used in the loop to create a list of class names
+        if character["class"] not in [c["name"] for c in classes]:
+            result = find_most_similar_item(character["class"], classes)
+            most_similar = result[0]  # <-- Dictionary of the most similar weapon
+            similarity = result[1]    # <-- Similarity score (not used here, but could be logged) #! TBH: we have to decide if we use it or not (could be used to invent the weapon if the similarity is too low)
+            character["class"] = most_similar["name"]
 
         return character
     except Exception as e:
@@ -220,7 +228,7 @@ def create_character_from_description(description: str) -> dict:
         return {
             "name": "Unknown Hero",
             "race": "Human",
-            "class": "Adventurer",
+            "class": "Warrior",
             "max_hp": 100,
             "gold": 50,
             "xp": 0,
@@ -265,12 +273,17 @@ def find_most_similar_item(description, items):
 
 # Example of predefined weapons (obviously this should be taken from the database)
 weapons = [
-    {"name": "Longbow", "description": "Standard bow for archers, deals 2-6 physical damage"},
-    {"name": "Short Sword", "description": "Light sword, suitable for close combat"},
-    {"name": "Magic Wand", "description": "Wand for casting basic spells, deals magic damage"}
+    {"name": "Longbow", "type": "ranged", "description": "Standard bow for archers, deals 2-6 physical damage"},
+    {"name": "Short Sword", "type": "physical", "description": "Light sword, suitable for close combat"},
+    {"name": "Magic Wand", "type": "magical", "description": "Wand for casting basic spells, deals magic damage"}
 ]
 
-
+classes = [
+    {"name": "Warrior", "description": "Strong melee fighter, excels in physical combat."},
+    {"name": "Mage", "description": "Master of magical arts, uses spells to attack and defend."},
+    {"name": "Rogue", "description": "Stealthy and agile, skilled in ranged attacks and evasion."},
+    {"name": "ranger", "description": "Expert in ranged combat and survival skills."}
+]
 
 
 # TODO: Skills that do danamge add this damange to the overlall damage of the weapon equipped (if any)
@@ -279,9 +292,6 @@ weapons = [
 # force and intelligence could affect the damage of physical and magical weapons/skills
 # DEX is used to eccet chance to hit or not be hit and the one that starts first the turn in combat
 # if we want to add more complexity to attack we can add radius (so it can hit multiple enemies)
-
-#magic always hit, but the physical can miss based on DEX/STR stat (bows use a dex check, melee weapons use a str check)
-# roll d20 + stat scaling vs 10 + enemy DEX check
 
 def roll_d6():
     return random.randint(1, 6)
@@ -297,6 +307,7 @@ def roll_d20():
 
 # it takes a dice expression like "2d6+3" and returns the result of the roll
 def roll_dice(expr: str) -> int:
+    # Also black magic :-)
     match = re.match(r"(\d+)d(\d+)([+-]\d+)?", expr.replace(" ", ""))
     if not match:
         return 0
@@ -315,11 +326,33 @@ def stat_modifier(stat_value: int) -> int:
 
 
 def stat_scaling(skill_type, stats):
-    if skill_type in ["physical"]:
+    if skill_type in ["attack"]:
         return stat_modifier(stats["STR"])
     if skill_type in ["magic"]:
         return stat_modifier(stats["INT"])
     return 0
+
+#magic always hit, but the physical can miss based on DEX/STR stat (bows use a dex check, melee weapons use a str check)
+# roll d20 + stat scaling vs 10 + enemy DEX check
+def hit_check(attacker, defender, skill=None):
+    # Magic always hits
+    if skill and skill["type"] == "magic":
+        return True
+
+    weapon = attacker["equipped_weapon"].lower()
+
+    # Stat used to hit
+    if weapon["type"] == "ranged":
+        attack_stat = attacker["stats"]["DEX"]
+    elif weapon["type"] == "magical":
+        attack_stat = attacker["stats"]["INT"]
+    else:
+        attack_stat = attacker["stats"]["STR"]
+
+    attack_roll = random.randint(1, 20) + stat_modifier(attack_stat)
+    defense = 10 + stat_modifier(defender["stats"]["DEX"])
+
+    return attack_roll >= defense
 
 
 
