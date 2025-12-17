@@ -1,6 +1,6 @@
 /*  Consigliato in https://www.joshwcomeau.com/css/surprising-truth-about-pixels-and-accessibility/ */
 html {
-    --8px: 0.5rem:
+    --8px: 0.5rem;
     --9px: 0.5625rem;
     --10px: 0.625rem;
     --11px: 0.6875rem;
@@ -17,10 +17,43 @@ html {
 }
 
 * {
-        box-sizing: border-box !important;
+    box-sizing: border-box !important;
 }
 
-html, body {margin: 0; width:100%; height: 100%;}
+html, body {
+    margin: 0; 
+    width: 100%; 
+    height: 100%;
+}
 
+/* ===========================
+   Flash message styles
+   =========================== */
+.flashes {
+    list-style: none;
+    padding: 0;
+    margin: var(--16px) auto; /* 1rem top/bottom */
+    max-width: 500px;
+}
 
+.flash {
+    padding: var(--12px) var(--16px);
+    border-radius: var(--8px);
+    margin-bottom: var(--8px);
+    font-size: var(--14px);
+    animation: fadeIn 0.25s ease-out;
+}
+
+/* Categories */
+.flash.error {
+    background-color: #f8d7da;
+    color: #842029;
+    border: 1px solid #f5c2c7;
+}
+
+.flash.success {
+    background-color: #d1e7dd;
+    color: #0f5132;
+    border: 1px solid #badbcc;
+}
 

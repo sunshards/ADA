@@ -35,10 +35,10 @@ def login():
         except Exception as e:
             error = f"An error occurred: {str(e)}"
 
-
-        # flash(error)
-        print(error)
-        print(email, password)
+        if error:
+            flash(error)
+        # print(error)
+        # print(email, password)
     return render_template('auth/login.html')
 
 @bp.route('/register', methods=('GET', 'POST'))
@@ -80,7 +80,8 @@ def register():
                 print("A user with that username or email already exists.")
             except Exception as e:
                 print(f"Registration failed: {str(e)}")
+        else:
+            flash(error)
 
-
-        print(username, email, password)
+        # print(username, email, password)
     return render_template('auth/register.html')
