@@ -17,7 +17,7 @@ def login():
         elif not password:
             error = 'Password is required.'
 
-        flash(error)
+        # flash(error)
         print(email, password)
     return render_template('auth/login.html')
 
