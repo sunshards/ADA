@@ -8,6 +8,7 @@ requires-python = ">=3.13"
 dependencies = [
     "bcrypt>=5.0.0",
     "flask>=3.1.2",
+    "flask-socketio>=5.5.1",
     "mongoengine>=0.29.1",
     "openai>=2.13.0",
     "python-dotenv>=1.2.1",
