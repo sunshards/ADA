@@ -3,7 +3,7 @@ from flask import (
 )
 
 from . import global_config
-from . import app
+from . import brain
 from . import character
 
 bp = Blueprint('creation', __name__, url_prefix='/creation')
@@ -19,7 +19,7 @@ def creation():
             print("desc: ", desc)
             print(desc.strip() == "")
             
-            character_json = app.create_character_from_description(desc)
+            character_json = brain.create_character_from_description(desc)
         else:
             character_json = character.test_character_json
         
