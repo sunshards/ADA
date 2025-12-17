@@ -11,6 +11,7 @@
         "kind": "damage",
         "target": "enemy",
         "element": "fire",
+        "mana_cost": 5,
         "value": "1d8+2"
       }
     ]
@@ -27,6 +28,7 @@
         "kind": "damage",
         "target": "area",
         "element": "fire",
+        "mana_cost": 15,
         "radius": 3,
         "value": "2d8+4"
       }
@@ -62,6 +64,7 @@
         "target": "ally",
         "stat": "DEX",
         "mode": "percentage",
+        "mana_cost": 10,
         "value": "1d10+5",
         "duration": "1d4+0"
       }
@@ -80,6 +83,7 @@
         "target": "enemy",
         "stat": "STR",
         "mode": "flat",
+        "mana_cost": 10,
         "value": "1d4+1",
         "duration": "1d4+0"
       }
@@ -111,21 +115,7 @@
       {
         "kind": "stun",
         "target": "enemy",
-        "duration": "1d2+0"
-      }
-    ]
-  },
-  {
-    "_id": "shield_bash",
-    "name": "Shield Bash",
-    "description": "Bashes the enemy and stuns them.",
-    "type": "attack",
-    "min_lv": 3,
-    "expected_lv": 4,
-    "effects": [
-      {
-        "kind": "stun",
-        "target": "enemy",
+        "mana_cost": 10,
         "duration": "1d2+0"
       }
     ]
@@ -142,6 +132,7 @@
         "kind": "damage",
         "target": "enemy",
         "element": "ice",
+        "mana_cost": 10,
         "value": "3d6+2"
       },
       {
