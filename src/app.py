@@ -569,7 +569,8 @@ with open(item_path, "r", encoding="utf-8") as f:
 
 #!!!! in realta questo è sbagliato:
 # noi dobbiamo far narrarre all'utente e poi chat analizza il testo e resittuisce il riusltato
-# Questo è solo per testare se funziona
+# Questo è solo per testare se funziona 
+# USe item IS WRONG!!!!!! #! items in realta serve solo per le narrazioni, nel combattimento non centra!!!!!!!!
 def combat_loop(player, enemy, items):
     print(f"\n[COMBAT START] You encounter a {enemy['name']}!")
 
