@@ -241,10 +241,11 @@ def create_character_from_description(description: str) -> dict:
             }
         }
 
-#! Remember to do: uv add scikit-learn
+
 
 # Finds the most similar item based on description using TF-IDF and cosine similarity
 # Tutorial used: (https://www.newscatcherapi.com/blog-posts/ultimate-guide-to-text-similarity-with-python)
+#! Remember to do: uv add scikit-learn
 def find_most_similar_item(description, items):
     # Builds the corpus: first the character description, then all the item descriptions
     corpus = [description] + [item['description'] for item in items]
@@ -266,6 +267,22 @@ weapons = [
     {"name": "Short Sword", "description": "Light sword, suitable for close combat"},
     {"name": "Magic Wand", "description": "Wand for casting basic spells, deals magic damage"}
 ]
+
+
+
+
+# TODO: Skills that do danamge add this damange to the overlall damage of the weapon equipped (if any)
+# if a skill do damage (min-max damange -> dice: of the skill do a max damange of 6 we use a d6, if 12 it does a d12), if it doesnt it has NULL as 0 damage
+# if there a buff or debuff: we lunch a dice (i dont )
+# force and intelligence could affect the damage of physical and magical weapons/skills
+# DEX is used to eccet chance to hit or not be hit and the one that starts first the turn in combat
+# if we want to add more complexity to attack we can add radius (so it can hit multiple enemies)
+
+
+
+
+
+
 
 
 
