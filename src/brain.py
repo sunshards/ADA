@@ -634,9 +634,8 @@ def use_item(character, real_name, items):
 
 
 
-
+# Parse free-text player input using AI and return one of the four actions
 def get_action_from_ai(user_input: str) -> str:
-    """Parse free-text player input using AI and return one of the four actions."""
     prompt = [
         {
             "role": "system",
@@ -678,7 +677,7 @@ with open(item_path, "r", encoding="utf-8") as f:
     ITEMS_DB = json.load(f)
 
 
-def combat_loop(player, enemy, items, state, mode="manual"):
+def combat_loop(player, enemy, items, state, mode="manual", similarity_threshold=0.3):
     print(f"\n[COMBAT START] You encounter a {enemy['name']}!")
 
     combat_history = []
@@ -687,15 +686,41 @@ def combat_loop(player, enemy, items, state, mode="manual"):
         print(f"\n[Status] {player['name']} Hp: {player['current_hp']}/{player['max_hp']}, Mana: {player['mana']} | {enemy['name']} Hp: {enemy['current_hp']}/{enemy['max_hp']}")
 
         user_input = input("Describe your action: ").strip()
-        
+
+        # Recognized basic actions
         recognized_actions = ["attack", "use skill", "use item", "run"]
 
-        # Determine action
         if user_input.lower() in recognized_actions:
             action = user_input.lower()
         else:
             print("Parsing input via AI...")
             action = get_action_from_ai(user_input)
+
+        # Check if the input is realistic
+        # If using an item or skill, check similarity to available ones
+        realistic = True
+        item_or_skill_name = None
+        if action == "use skill" and player.get("skills"):
+            skill = get_skill_by_name(player["skills"][0], SKILLS_DB)
+            item_or_skill_name = skill["name"]
+            _, sim = find_most_similar_item(user_input, [{"description": skill["description"], "name": skill["name"]}])
+            if sim < similarity_threshold:
+                realistic = False
+
+        elif action == "use item" and player.get("inventory"):
+            inventory_items = [get_item_by_name(name, items) for name in player["inventory"]]
+            matched_item, sim = find_most_similar_item(user_input, inventory_items)
+            item_or_skill_name = matched_item["name"]
+            if sim < similarity_threshold:
+                realistic = False
+
+        # If unrealistic, player wastes the turn
+        if not realistic:
+            print(f"{player['name']} is greatly confused and wastes their turn!")
+            enemy_weapon = next((i for i in items if i["name"] == enemy.get("equipped_weapon", "")), None)
+            result = combat_attack(enemy, player, weapon_item=enemy_weapon)
+            print(f"[Enemy Turn] {enemy['name']} hits and deals {result['damage']} damage!")
+            continue
 
         # Perform the chosen action
         turn_summary = ""
@@ -706,21 +731,14 @@ def combat_loop(player, enemy, items, state, mode="manual"):
             turn_summary = f"You attack with {player['equipped_weapon']} -> hit for {result['damage']}. Rolls: {rolls_str}"
 
         elif action == "use skill":
-            if not player.get("skills"):
-                print("You have no skills!")
-                continue
-            skill = get_skill_by_name(player["skills"][0], SKILLS_DB)
             result = combat_attack(player, enemy, skill=skill)
             rolls_str = " + ".join(str(r) for r in result["skill_rolls"]) if result["skill_rolls"] else "no rolls"
             turn_summary = f"You use {skill['name']} -> hit for {result['damage']}. Rolls: {rolls_str}"
 
         elif action == "use item":
-            if not player["inventory"]:
-                print("No items to use!")
-                continue
-            item_name = player["inventory"][0]
-            success, turn_summary = use_item(player, item_name, items)
+            success, turn_summary = use_item(player, item_or_skill_name, items)
             if not success:
+                print(turn_summary)
                 continue
 
         elif action == "run":
@@ -732,11 +750,11 @@ def combat_loop(player, enemy, items, state, mode="manual"):
             else:
                 turn_summary = "Failed to escape!"
 
-        # Enemy turn
+        #! Enemy turn
         enemy_summary = ""
         if enemy["current_hp"] > 0 and action != "run":
-            weapon_item = next((i for i in items if i["name"] == enemy.get("equipped_weapon", "")), None)
-            result = combat_attack(enemy, player, weapon_item=weapon_item)
+            enemy_weapon = next((i for i in items if i["name"] == enemy.get("equipped_weapon", "")), None)
+            result = combat_attack(enemy, player, weapon_item=enemy_weapon)
             enemy_summary = f"[Enemy Turn] {enemy['name']} hits and deals {result['damage']} damage!"
 
         # Combine turn summary
@@ -744,14 +762,13 @@ def combat_loop(player, enemy, items, state, mode="manual"):
         if enemy_summary:
             combat_text += "\n" + enemy_summary
 
-        # Call AI narrator for immersive description
+        #! Ai Narration
         history = [
             system_rules,
             {"role": "system", "content": f"Current location: {state['location']}, current quest: {state['quest']}."},
             {"role": "system", "content": f"Character: {player['name']}, Hp: {player['current_hp']}/{player['max_hp']}, Mana: {player['mana']}, Equipped Weapon: {player['equipped_weapon']}."},
             {"role": "user", "content": f"Turn narration:\n{combat_text}\nDescribe the scene immersively in JSON with 'narration' only, respecting the location and context."}
         ]
-        ai_output = narrate(history)
 
         ai_output = narrate(history)
         try:
@@ -762,6 +779,8 @@ def combat_loop(player, enemy, items, state, mode="manual"):
 
         print("\n" + narration)
         combat_history.append({"role": "user", "content": narration})
+
+
 
 
 
