@@ -9,6 +9,14 @@ import re
 import json
 import random
 
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+json_path = BASE_DIR / "json_exp"
+skill_path = json_path / "skill.json"
+item_path = json_path / "item.json"
+
+
 # Load the .env file -> so it takes the api key (remember to create it)
 load_dotenv()
 
@@ -163,7 +171,7 @@ def update_stat(current, change, min_val=0, max_val=9999):
 # Use the AI to generate a full character sheet JSON based on a free-text description.
 def create_character_from_description(description: str) -> dict:
     # Load the approved skills from skill.json
-    with open("json_exp/skill.json", "r", encoding="utf-8") as f:
+    with open(skill_path, "r", encoding="utf-8") as f:
         skills_db = json.load(f)
     
     skill_options = []
@@ -221,7 +229,7 @@ def create_character_from_description(description: str) -> dict:
         character = extract_json(output)
 
         # Load approved items from the database
-        with open("json_exp/item.json", "r", encoding="utf-8") as f:
+        with open(item_path, "r", encoding="utf-8") as f:
             items = json.load(f)
 
         # Check if the equipped weapon is in the items list
