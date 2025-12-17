@@ -195,7 +195,7 @@ def create_character_from_description(description: str) -> dict:
         - name
         - race
         - class
-        - max_hp
+        - max_hp = 50
         - gold
         - xp
         - level
@@ -635,6 +635,32 @@ def use_item(character, real_name, items):
 
 
 
+def get_action_from_ai(user_input: str) -> str:
+    """Parse free-text player input using AI and return one of the four actions."""
+    prompt = [
+        {
+            "role": "system",
+            "content": (
+                "You are a parser. Convert the player's input into a single action: "
+                "attack, use skill, use item, or run. "
+                "Return ONLY valid JSON like {\"action\": \"attack\"}."
+            ),
+        },
+        {"role": "user", "content": f"Player wrote: '{user_input}'"}
+    ]
+
+    try:
+        raw = narrate(prompt)
+        parsed = extract_json(raw)
+        action = parsed.get("action", "attack").lower()
+        if action not in ["attack", "use skill", "use item", "run"]:
+            print("[AI Parser] Invalid action returned. Defaulting to attack.")
+            action = "attack"
+        return action
+    except Exception as e:
+        print(f"[AI Parser Error] {e}. Defaulting to attack.")
+        return "attack"
+
 
 
 #! in the actual database comabt loop substitute all the reference 
@@ -652,114 +678,87 @@ with open(item_path, "r", encoding="utf-8") as f:
     ITEMS_DB = json.load(f)
 
 
-#!!!! in realta questo è sbagliato:
-# noi dobbiamo far narrarre all'utente e poi chat analizza il testo e resittuisce il riusltato
-# Questo è solo per testare se funziona 
-# USe item IS WRONG!!!!!! #! items in realta serve solo per le narrazioni, nel combattimento non centra!!!!!!!!
-def combat_loop(player, enemy, items):
+def combat_loop(player, enemy, items, mode="manual"):
     print(f"\n[COMBAT START] You encounter a {enemy['name']}!")
 
-    combat_history = []  # Pass to AI to narrate
+    combat_history = []
 
-    while player["max_hp"] > 0 and enemy["max_hp"] > 0:
-        # Show status
-        print(f"\n[Status] {player['name']} Hp: {player['current_hp']}/{player['max_hp']}, Mana: {player['mana']} | {enemy['name']} max_hp: {enemy['max_hp']}")
-        action = input("Choose action (attack/use skill/use item/run): ").strip().lower()
-        narration = ""
+    while player["current_hp"] > 0 and enemy["current_hp"] > 0:
+        print(f"\n[Status] {player['name']} Hp: {player['current_hp']}/{player['max_hp']}, Mana: {player['mana']} | {enemy['name']} Hp: {enemy['current_hp']}/{enemy['max_hp']}")
 
+        user_input = input("Describe your action: ").strip()
+        
+        recognized_actions = ["attack", "use skill", "use item", "run"]
+
+        # Determine action
+        if user_input.lower() in recognized_actions:
+            action = user_input.lower()
+        else:
+            print("Parsing input via AI...")
+            action = get_action_from_ai(user_input)
+
+        # Perform the chosen action
+        turn_summary = ""
         if action == "attack":
-            weapon_item = next((i for i in items if i["name"] == player["equipped_weapon"]), None)
+            weapon_item = next((i for i in items if i["name"] == player['equipped_weapon']), None)
             result = combat_attack(player, enemy, weapon_item=weapon_item)
-            
-            # Show dice rolls for weapon
-            if result["weapon_rolls"]:
-                rolls_str = " + ".join(str(r) for r in result["weapon_rolls"])
-                narration = f"You attack with {player['equipped_weapon']} and roll {rolls_str} -> total {result['damage']}, {result['result']}!"
-            else:
-                narration = f"You attack with {player['equipped_weapon']} and {result['result']} for {result['damage']} damage!"
-
+            rolls_str = " + ".join(str(r) for r in result["weapon_rolls"]) if result["weapon_rolls"] else "no rolls"
+            turn_summary = f"You attack with {player['equipped_weapon']} -> hit for {result['damage']}. Rolls: {rolls_str}"
 
         elif action == "use skill":
             if not player.get("skills"):
-                print("You have no skills to use!")
+                print("You have no skills!")
                 continue
-
-            print("Your skills:")
-            resolved_skills = []
-
-            for i, skill_name in enumerate(player["skills"]):
-                skill = get_skill_by_name(skill_name, SKILLS_DB)
-                if skill:
-                    resolved_skills.append(skill)
-                    print(f"{i+1}. {skill['name']} ({skill['type']})")
-
-
-            choice = input("Choose skill number: ")
-            try:
-                skill_idx = int(choice) - 1
-                skill = resolved_skills[skill_idx]
-            except:
-                print("Invalid choice!")
-                continue
-
+            skill = get_skill_by_name(player["skills"][0], SKILLS_DB)
             result = combat_attack(player, enemy, skill=skill)
-            if result["skill_rolls"]:
-                rolls_str = " + ".join(str(r) for r in result["skill_rolls"])
-                narration = f"You use {skill['name']} and roll {rolls_str} -> total {result['damage']}, {result['result']}!"
-            else:
-                narration = f"You use {skill['name']} and {result['result']} for {result['damage']} damage!"
-
-
+            rolls_str = " + ".join(str(r) for r in result["skill_rolls"]) if result["skill_rolls"] else "no rolls"
+            turn_summary = f"You use {skill['name']} -> hit for {result['damage']}. Rolls: {rolls_str}"
 
         elif action == "use item":
             if not player["inventory"]:
-                print("Your inventory is empty!")
+                print("No items to use!")
                 continue
-            print("Inventory:", player["inventory"])
-            real_name = input("Choose item to use: ").strip()
-            
-            success, narration = use_item(player, real_name, items)  # <-- returns only True/False
+            item_name = player["inventory"][0]
+            success, turn_summary = use_item(player, item_name, items)
             if not success:
                 continue
 
         elif action == "run":
-            roll = roll_d20()
-            if roll + stat_modifier(player["stats"]["DEX"]) >= 15:
-                narration = "You successfully escape the combat!"
-                print(narration)
+            roll = roll_d20() + stat_modifier(player["stats"]["DEX"])
+            if roll >= 15:
+                turn_summary = "You successfully escape!"
+                print(turn_summary)
                 return False
             else:
-                narration = "Failed to escape!"
-        else:
-            print("Unknown action!")
-            continue
+                turn_summary = "Failed to escape!"
 
-        # Enemy turn if still alive
-        if enemy["max_hp"] > 0 and action != "run":
+        # Enemy turn
+        enemy_summary = ""
+        if enemy["current_hp"] > 0 and action != "run":
             weapon_item = next((i for i in items if i["name"] == enemy.get("equipped_weapon", "")), None)
             result = combat_attack(enemy, player, weapon_item=weapon_item)
-            narration += f"\n[Enemy Turn] {enemy['name']} {result['result']}s and deals {result['damage']} damage!"
+            enemy_summary = f"[Enemy Turn] {enemy['name']} hits and deals {result['damage']} damage!"
 
-        # Print narration
-        print("\n" + narration)
+        # Combine turn summary
+        combat_text = turn_summary
+        if enemy_summary:
+            combat_text += "\n" + enemy_summary
 
-        # Add narration to history for AI to summarize or comment
-        combat_history.append({"role": "user", "content": narration})
-        # Optionally: call AI to generate immersive combat narration
+        # Call AI narrator for immersive description
+        history = [
+            system_rules,
+            {"role": "user", "content": f"Turn narration:\n{combat_text}\nDescribe the scene immersively in JSON with 'narration' only."}
+        ]
+        ai_output = narrate(history)
         try:
-            ai_narration = narrate([
-                system_rules,
-                alignment_prompt,
-                {"role": "system", "content": f"Long-term memory: {long_term_memory}"},
-                {"role": "system", "content": f"Character sheet: {player}"},
-                {"role": "system", "content": f"State: Enemy: {enemy}"},
-            ] + combat_history[-5:])  # last 5 messages for context
+            data = extract_json(ai_output)
+            narration = data.get("narration", combat_text)
+        except:
+            narration = combat_text
 
-            data = extract_json(ai_narration)
-            if "narration" in data:
-                print("\n" + data["narration"])
-        except Exception as e:
-            print(f"[NARRATOR ERROR] AI failed: {e}")
+        print("\n" + narration)
+        combat_history.append({"role": "user", "content": narration})
+
 
 
 enemy = {
@@ -810,6 +809,18 @@ def main():
     state = {"location": "Taverna Iniziale", 
              "quest": "Nessuna"
     }
+
+    # Choose combat mode
+    print("\nChoose combat mode:")
+    print("1. Manual (you select actions)")
+    print("2. AI Narration (you narrate, AI decides actions)")
+    mode_choice = input("> ").strip()
+    if mode_choice == "2":
+        combat_mode = "ai"
+    else:
+        combat_mode = "manual"
+
+    print(f"\n[INFO] Combat mode set to: {combat_mode}")
 
     while True:
         user_input = input("\n What do you do? (type 'quit' to quit) \n> ")
