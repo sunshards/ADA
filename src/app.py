@@ -836,6 +836,24 @@ def main():
             data = extract_json(output)
             recent_history.append({"role": "assistant", "content": data["narration"]})
             turn_count += 1
+
+            # check if theres a combat
+            if data.get("encounter"):
+                print("\n[ALERT] Combat has started!")
+                
+                # Qui puoi definire un nemico base oppure usare i dati passati dalla narrazione
+                enemy = {
+                    "name": "Goblin",
+                    "max_hp": 20,
+                    "current_hp": 20,
+                    "equipped_weapon": "Short Sword",
+                    "stats": {"STR": 10, "DEX": 10, "CON": 8, "INT": 5, "WIS": 5, "CHA": 5},
+                    "xp": 10,
+                    "gold": 5
+                }
+
+                combat_loop(character, enemy, ITEMS_DB)
+                continue  # Dopo il combattimento si torna al loop
             
             # Add/remove items from inventory
             for item in data.get("found_items", []):
@@ -889,7 +907,7 @@ def main():
                 long_term_memory = summarise_memory(long_term_memory, recent_history)
             
             #! Try tje combat function here
-            combat_loop(character, enemy, ITEMS_DB)
+            # combat_loop(character, enemy, ITEMS_DB)
 
         except Exception as e:
             print(f"\n[NARRATOR ERROR] The master in confused: {e}")
