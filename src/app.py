@@ -17,6 +17,8 @@ skill_path = json_path / "skill.json"
 item_path = json_path / "item.json"
 
 
+
+
 # Load the .env file -> so it takes the api key (remember to create it)
 load_dotenv()
 
@@ -173,12 +175,12 @@ def create_character_from_description(description: str) -> dict:
     # Load the approved skills from skill.json
     with open(skill_path, "r", encoding="utf-8") as f:
         skills_db = json.load(f)
+    with open(item_path, "r", encoding="utf-8") as f:
+        items_db = json.load(f)
     
-    skill_options = []
-    for s in skills_db:
-        skill_options.append(f"- {s['name']} (Type: {s['type']}, Min Level: {s['min_lv']}): {s['description']}")
-    
+    skill_options = [f"- {s['name']} (Type: {s['type']}, Min Level: {s['min_lv']}): {s['description']}" for s in skills_db]
     available_skills_text = "\n".join(skill_options)
+    
 
     prompt = [
             {"role": "system", "content": "You are a character creation AI. Generate a complete D&D-style character sheet in JSON format."},
@@ -193,12 +195,12 @@ def create_character_from_description(description: str) -> dict:
         - name
         - race
         - class
-        - max_hp
+        - max_hp = 50
         - gold
         - xp
         - level
         - mana
-        - inventory
+        - inventory (initially empty)
         - equipped_weapon
         - alignment_righteousness
         - alignment_morality
@@ -224,42 +226,11 @@ def create_character_from_description(description: str) -> dict:
         """}
         ] 
 
-    output = narrate(prompt)
+    
     try:
+        output = narrate(prompt)
         character = extract_json(output)
 
-        # Load approved items from the database
-        with open(item_path, "r", encoding="utf-8") as f:
-            items = json.load(f)
-
-        # Check if the equipped weapon is in the items list
-        equipped_weapon_name = character["equipped_weapon"]
-        #             V <- this is the name of a element of the list: used in the loop to create a list of weapon names
-        item_names = [w["name"] for w in items]
-        
-        # If equipped_weapon is not present in the weapon list, find the most similar one.
-        if equipped_weapon_name not in item_names:
-            most_similar, similarity = find_most_similar_item(equipped_weapon_name, items)
-
-            # Update equipped weapon
-            character["equipped_weapon"] = most_similar["name"]
-
-            # Add it to inventory if not already there
-            if most_similar["name"] not in character["inventory"]:
-                character["inventory"].append(most_similar["name"])
-        
-        # ----------------------------------------------------------
-
-        # TODO: when we add the classes database, do as above
-        # If equipped_weapon is not present in the weapon list, find the most similar one.
-        #                                       V <- this is the name of a element of the list: used in the loop to create a list of weapon names
-        if character["class"] not in [c["name"] for c in classes]:
-            result = find_most_similar_item(character["class"], classes)
-            most_similar = result[0]  # <-- Dictionary of the most similar weapon
-            similarity = result[1]    # <-- Similarity score (not used here, but could be logged) #! TBH: we have to decide if we use it or not (could be used to invent the weapon if the similarity is too low)
-            character["class"] = most_similar["name"]
-
-        return character
     except Exception as e:
         print(f"[ERROR] Failed to generate character: {e}")
         print("Using placeholder character instead.")
@@ -289,6 +260,107 @@ def create_character_from_description(description: str) -> dict:
                 "CHA": 5
             }
         }
+    
+    # --- Assign skills from DB based on AI suggestions ---
+    #? No find_most_similar_item used, because the ai already has the skills in the prompt when generated, we only need to validate
+    selected_skills = []
+    for skill_name in character.get("skills", []):
+        # Find the skill in the skills database (case-insensitive match)
+        skill = None
+        for s in skills_db:
+            if s["name"].lower() == skill_name.lower():
+                skill = s
+                break
+
+        # Add it if it's valid and not already in the selected list
+        if skill and skill["name"] not in selected_skills:
+            selected_skills.append(skill["name"])
+
+    # Fallback: if no valid skills found, pick one first matching skill
+    if not selected_skills:
+        for s in skills_db:
+            if s["type"] in ("attack", "magic", "buff", "debuff"):
+                selected_skills.append(s["name"])
+                break  # pick only the first matching skill
+
+    # Update character skills
+    character["skills"] = selected_skills
+
+    # --- Assign inventory (weapon/item) based on similarity ---
+    #? We dont ask the ai to suggest anything, we use the characher description to find the closest item that fit it
+    usable_items = []
+    for i in items_db:
+        if i["itemType"] in ("weapon", "magical", "consumable"):
+            usable_items.append(i)
+    
+    # Find the most similar item to the character description
+    best_item, similarity = find_most_similar_item(character["description"], usable_items)
+    # Similarity score (not used here, but could be logged) 
+    # #! TBH: we have to decide if we use it or not (could be used to invent the weapon if the similarity is too low)
+
+    # Start inventory with the most similar item
+    inventory = [best_item["name"]]
+
+    # Scan description for extra items (max 3 non-weapons)
+    extra_items_added = 0
+    MAX_EXTRA_ITEMS = 3
+
+    # Separate usable items into weapons and non-weapons
+    all_non_weapon_items = []
+    for item in usable_items:
+        if item["itemType"] == "weapon":
+            continue  # skip weapons
+        if item["name"] == best_item["name"]:
+            continue  # skip the already selected best item
+        all_non_weapon_items.append(item)
+
+    non_weapon_items = all_non_weapon_items
+
+    while extra_items_added < MAX_EXTRA_ITEMS and non_weapon_items:
+        # Find the most similar consumable to the character description
+        next_item, sim = find_most_similar_item(character["description"], non_weapon_items)
+        inventory.append(next_item["name"])
+        extra_items_added += 1
+        # Remove it from the pool to avoid duplicates
+        non_weapon_items.remove(next_item)
+
+    character["inventory"] = inventory
+
+    if best_item["itemType"] in ("weapon", "magical"):
+        character["equipped_weapon"] = best_item["name"]
+    else:
+        # Try to equip the first weapon in inventory
+        for item_name in inventory:
+            item = None  # default if not found
+            for i in items_db:
+                if i["name"] == item_name:
+                    item = i
+                    break  # stop at the first match
+
+            if item and item["itemType"] == "weapon":
+                character["equipped_weapon"] = item_name
+                break
+        else: 
+            print(f"[ERROR] Failed to select a matching weapon to the description")
+            character["inventory"] = "Short Sword"
+            character["equipped_weapon"] = "Short Sword"
+
+    # ----------------------------------------------------------
+
+    # TODO: when we add the classes database, do as above
+    # If equipped_weapon is not present in the weapon list, find the most similar one.
+    #                                       V <- this is the name of a element of the list: used in the loop to create a list of weapon names
+    if character["class"] not in [c["name"] for c in classes]:
+        result = find_most_similar_item(character["class"], classes)
+        most_similar = result[0]  # <-- Dictionary of the most similar weapon
+        similarity = result[1]    # <-- Similarity score (not used here, but could be logged) #! TBH: we have to decide if we use it or not (could be used to invent the weapon if the similarity is too low)
+        character["class"] = most_similar["name"]
+    
+    # Current HP for combat tracking
+    character["current_hp"] = character["max_hp"]
+
+    return character
+
 
 
 
@@ -344,7 +416,7 @@ def roll_d20():
 # it takes a dice expression like "2d6+3" and returns the result of the roll
 # Return -> Rolls: [4, 6], Total: 13
 # Rolls for narration and total for calculations
-def roll_dice(expr: str) -> int:
+def roll_dice(expr: str):
     # Also black magic :-)
     match = re.match(r"(\d+)d(\d+)([+-]\d+)?", expr.replace(" ", ""))
     if not match:
@@ -465,30 +537,245 @@ def weapon_base_damage(weapon_item: dict) -> int:
 
 
 # Perform an attack (weapon or skill) and return combat result.
-def combat_attack(attacker: dict, defender: dict, skill: dict = None, weapon_item: dict = None) -> dict:
+def combat_attack(attacker, defender, skill=None, weapon_item=None):
+    result_data = {"result": "miss", "damage": 0, "defender_hp": defender.get("current_hp", 0), "skill_rolls": [], "weapon_rolls": []}
+    
     if not hit_check(attacker, defender, skill, weapon_item):
-        return {"result": "miss", "damage": 0, "defender_hp": defender.get("hp", 0)}
+        return result_data
 
-    damage = 0
+    total_damage = 0
+
+    # Skill
     if skill:
-        damage += skill_damage(skill, attacker)
+        dmg = skill_damage(skill, attacker)
+        total_damage += dmg["total"]
+        result_data["skill_rolls"] = dmg["rolls"]
+
+    # Weapon
     if weapon_item and (skill is None or skill["type"] == "attack"):
-        damage += weapon_base_damage(weapon_item)
+        dmg = weapon_base_damage(weapon_item)
+        total_damage += dmg["total"]
+        result_data["weapon_rolls"] = dmg["rolls"]
 
-    defender["hp"] = update_stat(defender.get("hp", 100), -damage, 0)
-    return {"result": "hit", "damage": damage, "defender_hp": defender["hp"]}
+    defender["current_hp"] = update_stat(defender.get("current_hp", 0), -total_damage, 0, defender["max_hp"])
+    result_data["damage"] = total_damage
+    result_data["defender_hp"] = defender["current_hp"]
+    result_data["result"] = "hit"
+
+    return result_data
 
 
 
 
-# if skill["type"] == "attack":
-#     result = skill_damage(skill, character)
-# elif skill["type"] == "buff":
-#     result = skill_buff(skill, character)
-# elif skill["type"] == "debuff":
-#     result = skill_debuff(skill, character)
 
-# print(result)
+# Determine the type of skill and call the appropriate function.
+def resolve_skill(skill, character):
+    if skill["type"] == "attack":
+        return skill_damage(skill, character)
+    elif skill["type"] == "buff":
+        return skill_buff(skill, character)
+    elif skill["type"] == "debuff":
+        return skill_debuff(skill, character)
+    else:
+        return {"total": 0, "rolls": [], "duration": 0}
+
+
+# MAke so that if the item is a weapon it changes the equipped weapon
+def use_item(character, real_name, items):
+    real_name = real_name.strip().lower()
+    inventory_map = {i.lower(): i for i in character["inventory"]}
+
+    if real_name not in inventory_map:
+        return False, "Item not found"
+
+    real_name = inventory_map[real_name]
+    item = next((i for i in items if i["name"] == real_name), None)
+    if not item:
+        return False, "Invalid item"
+
+    # Equip weapon/magical
+    if item["itemType"] in ("weapon", "magical"):
+        character["equipped_weapon"] = item["name"]
+        return True, f"You equip the {item['name']}."
+
+    # Healing or fixed effect
+    for effect in item.get("effects", []):
+        if effect["kind"] == "heal":
+            value = str(effect["value"]).strip()
+
+            # Detect dice expression like 3d6+2
+            dice_pattern = r"^\d+d\d+([+-]\d+)?$"
+            if re.match(dice_pattern, value):
+                heal, rolls = roll_dice(value)
+                character["current_hp"] = update_stat(character["current_hp"], heal, 0, character["max_hp"])
+                return True, f"You heal for {heal} HP (rolls: {rolls})"
+            else:
+                # Treat as fixed number
+                try:
+                    heal = int(value)
+                except:
+                    heal = 0
+                character["current_hp"] = update_stat(character["current_hp"], heal, 0, character["max_hp"])
+                return True, f"You heal for {heal} HP."
+
+    # Handle consumable uses
+    if "uses" in item and item["uses"] > 0:
+        item["uses"] -= 1
+        if item["uses"] == 0:
+            character["inventory"].remove(real_name)
+        return True, f"Used {real_name}, {item['uses']} uses left"
+
+    # Default: remove consumable
+    character["inventory"].remove(real_name)
+    return True, f"Used {real_name}"
+
+
+
+
+
+
+
+def get_action_from_ai(user_input: str) -> str:
+    """Parse free-text player input using AI and return one of the four actions."""
+    prompt = [
+        {
+            "role": "system",
+            "content": (
+                "You are a parser. Convert the player's input into a single action: "
+                "attack, use skill, use item, or run. "
+                "Return ONLY valid JSON like {\"action\": \"attack\"}."
+            ),
+        },
+        {"role": "user", "content": f"Player wrote: '{user_input}'"}
+    ]
+
+    try:
+        raw = narrate(prompt)
+        parsed = extract_json(raw)
+        action = parsed.get("action", "attack").lower()
+        if action not in ["attack", "use skill", "use item", "run"]:
+            print("[AI Parser] Invalid action returned. Defaulting to attack.")
+            action = "attack"
+        return action
+    except Exception as e:
+        print(f"[AI Parser Error] {e}. Defaulting to attack.")
+        return "attack"
+
+
+
+#! in the actual database comabt loop substitute all the reference 
+#! to the items_db with a query to the database
+def get_item_by_name(name: str, items_db: list):
+    return next((i for i in items_db if i["name"] == name), None)
+
+def get_skill_by_name(name: str, skills_db: list):
+    return next((s for s in skills_db if s["name"] == name), None)
+
+with open(skill_path, "r", encoding="utf-8") as f:
+    SKILLS_DB = json.load(f)
+
+with open(item_path, "r", encoding="utf-8") as f:
+    ITEMS_DB = json.load(f)
+
+
+def combat_loop(player, enemy, items, state, mode="manual"):
+    print(f"\n[COMBAT START] You encounter a {enemy['name']}!")
+
+    combat_history = []
+
+    while player["current_hp"] > 0 and enemy["current_hp"] > 0:
+        print(f"\n[Status] {player['name']} Hp: {player['current_hp']}/{player['max_hp']}, Mana: {player['mana']} | {enemy['name']} Hp: {enemy['current_hp']}/{enemy['max_hp']}")
+
+        user_input = input("Describe your action: ").strip()
+        
+        recognized_actions = ["attack", "use skill", "use item", "run"]
+
+        # Determine action
+        if user_input.lower() in recognized_actions:
+            action = user_input.lower()
+        else:
+            print("Parsing input via AI...")
+            action = get_action_from_ai(user_input)
+
+        # Perform the chosen action
+        turn_summary = ""
+        if action == "attack":
+            weapon_item = next((i for i in items if i["name"] == player['equipped_weapon']), None)
+            result = combat_attack(player, enemy, weapon_item=weapon_item)
+            rolls_str = " + ".join(str(r) for r in result["weapon_rolls"]) if result["weapon_rolls"] else "no rolls"
+            turn_summary = f"You attack with {player['equipped_weapon']} -> hit for {result['damage']}. Rolls: {rolls_str}"
+
+        elif action == "use skill":
+            if not player.get("skills"):
+                print("You have no skills!")
+                continue
+            skill = get_skill_by_name(player["skills"][0], SKILLS_DB)
+            result = combat_attack(player, enemy, skill=skill)
+            rolls_str = " + ".join(str(r) for r in result["skill_rolls"]) if result["skill_rolls"] else "no rolls"
+            turn_summary = f"You use {skill['name']} -> hit for {result['damage']}. Rolls: {rolls_str}"
+
+        elif action == "use item":
+            if not player["inventory"]:
+                print("No items to use!")
+                continue
+            item_name = player["inventory"][0]
+            success, turn_summary = use_item(player, item_name, items)
+            if not success:
+                continue
+
+        elif action == "run":
+            roll = roll_d20() + stat_modifier(player["stats"]["DEX"])
+            if roll >= 15:
+                turn_summary = "You successfully escape!"
+                print(turn_summary)
+                return False
+            else:
+                turn_summary = "Failed to escape!"
+
+        # Enemy turn
+        enemy_summary = ""
+        if enemy["current_hp"] > 0 and action != "run":
+            weapon_item = next((i for i in items if i["name"] == enemy.get("equipped_weapon", "")), None)
+            result = combat_attack(enemy, player, weapon_item=weapon_item)
+            enemy_summary = f"[Enemy Turn] {enemy['name']} hits and deals {result['damage']} damage!"
+
+        # Combine turn summary
+        combat_text = turn_summary
+        if enemy_summary:
+            combat_text += "\n" + enemy_summary
+
+        # Call AI narrator for immersive description
+        history = [
+            system_rules,
+            {"role": "system", "content": f"Current location: {state['location']}, current quest: {state['quest']}."},
+            {"role": "system", "content": f"Character: {player['name']}, Hp: {player['current_hp']}/{player['max_hp']}, Mana: {player['mana']}, Equipped Weapon: {player['equipped_weapon']}."},
+            {"role": "user", "content": f"Turn narration:\n{combat_text}\nDescribe the scene immersively in JSON with 'narration' only, respecting the location and context."}
+        ]
+        ai_output = narrate(history)
+
+        ai_output = narrate(history)
+        try:
+            data = extract_json(ai_output)
+            narration = data.get("narration", combat_text)
+        except:
+            narration = combat_text
+
+        print("\n" + narration)
+        combat_history.append({"role": "user", "content": narration})
+
+
+
+enemy = {
+    "name": "Goblin",
+    "max_hp": 20,
+    "equipped_weapon": "Short Sword",
+    "stats": {"STR": 10, "DEX": 10, "CON": 8, "INT": 5, "WIS": 5, "CHA": 5},
+    "xp": 10,
+    "gold": 5
+}
+
+
+
 
 # !DEPRECTED(?)
 # # the weapons are superclass of items, 
@@ -496,7 +783,7 @@ def combat_attack(attacker: dict, defender: dict, skill: dict = None, weapon_ite
 
 # the potion are used only once then they are removed from the inventory -> imp
 # nell'inventario c'è la baccheta con gli usi effetivi, poi non la puoi piu usare
-# mettere un sistema per ricaricarla
+# dopo 20 turni si ricarica
 
 
 
@@ -527,6 +814,18 @@ def main():
              "quest": "Nessuna"
     }
 
+    # Choose combat mode
+    print("\nChoose combat mode:")
+    print("1. Manual (you select actions)")
+    print("2. AI Narration (you narrate, AI decides actions)")
+    mode_choice = input("> ").strip()
+    if mode_choice == "2":
+        combat_mode = "ai"
+    else:
+        combat_mode = "manual"
+
+    print(f"\n[INFO] Combat mode set to: {combat_mode}")
+
     while True:
         user_input = input("\n What do you do? (type 'quit' to quit) \n> ")
         
@@ -552,6 +851,24 @@ def main():
             data = extract_json(output)
             recent_history.append({"role": "assistant", "content": data["narration"]})
             turn_count += 1
+
+            # check if theres a combat
+            if data.get("encounter"):
+                print("\n[ALERT] Combat has started!")
+                
+                # Qui puoi definire un nemico base oppure usare i dati passati dalla narrazione
+                enemy = {
+                    "name": "Goblin",
+                    "max_hp": 20,
+                    "current_hp": 20,
+                    "equipped_weapon": "Short Sword",
+                    "stats": {"STR": 10, "DEX": 10, "CON": 8, "INT": 5, "WIS": 5, "CHA": 5},
+                    "xp": 10,
+                    "gold": 5
+                }
+
+                combat_loop(character, enemy, ITEMS_DB, state)
+                continue  # After the combat return to the main loop
             
             # Add/remove items from inventory
             for item in data.get("found_items", []):
@@ -593,7 +910,7 @@ def main():
 
             # Print status for debugging
             print("-" * 30)
-            print(f"[Location: {state['location'].upper()}] | Quest: {state['quest'].lower()} | HP: {character['max_hp']} | Mana: {character['mana']} | Gold: {character['gold']}")
+            print(f"[Location: {state['location'].upper()}] | Quest: {state['quest'].lower()} | max_hp: {character['max_hp']} | Mana: {character['mana']} | Gold: {character['gold']}")
             print("-" * 30)
 
             # Print the narration
@@ -603,6 +920,9 @@ def main():
             if turn_count > 0 and turn_count % 10 == 0:
                 print("\n[SYSTEM] Ada is sorting through her memories...")
                 long_term_memory = summarise_memory(long_term_memory, recent_history)
+            
+            #! FORCE Try the combat function here
+            # combat_loop(character, enemy, ITEMS_DB)
 
         except Exception as e:
             print(f"\n[NARRATOR ERROR] The master in confused: {e}")
