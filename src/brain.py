@@ -703,6 +703,7 @@ def combat_loop(player, enemy, items, state, mode="manual", similarity_threshold
         if action == "use skill" and player.get("skills"):
             skill = get_skill_by_name(player["skills"][0], SKILLS_DB)
             item_or_skill_name = skill["name"]
+        #   V   <-- We dont use the most similar item, but only need the similarity
             _, sim = find_most_similar_item(user_input, [{"description": skill["description"], "name": skill["name"]}])
             if sim < similarity_threshold:
                 realistic = False
