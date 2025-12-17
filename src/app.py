@@ -250,9 +250,6 @@ def create_character_from_description(description: str) -> dict:
         
         # ----------------------------------------------------------
 
-
-        # ----------------------------------------------------------
-
         # TODO: when we add the classes database, do as above
         # If equipped_weapon is not present in the weapon list, find the most similar one.
         #                                       V <- this is the name of a element of the list: used in the loop to create a list of weapon names
