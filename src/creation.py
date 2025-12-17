@@ -3,7 +3,7 @@ from flask import (
 )
 
 from . import global_config
-from . import app
+from . import brain
 from . import character
 
 bp = Blueprint('creation', __name__, url_prefix='/creation')
