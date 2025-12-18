@@ -16,29 +16,39 @@
         </div>
     </nav>
 
-    <div class="container py-3">
+    <div class="container mt-2 py-3 d-flex flex-column gap-3 align-items-center">
         
-        <div class="row text-bg-primary align-items-center my-3 p-2 rounded-2 character-row-card">
-            <div class="col-lg-4 col-md-5 text-center text-md-start">
-                <img
-                    src="{{ url_for('static', filename='temp/avatar_animal_00001.png') }}"
-                    alt="User avatar"
-                    class="img-fluid rounded-circle"
-                    style="max-width: 96px;"
-                >
-            </div>
-            <div class="col d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-primary">
-                    <i data-feather="edit"></i>
-                </button>
-                <button type="button" class="btn btn-primary">
-                    <i data-feather="trash"></i>
-                </button>
-                <button type="button" class="btn btn-primary">Gioca</button>
-            </div>
-        </div>
+        {% for character in characters %}
 
-        <div class="row text-bg-primary align-items-center my-3 p-2 rounded-2 character-row-card">
+            <!-- Character Row -->
+            <div class="row col-8 text-bg-primary align-items-center p-2 rounded-2 character-row-card">
+                <!-- Image and Character name -->
+                <div class="d-flex flex-row col-lg-4 col-md-5 text-center text-md-start">
+                    <img
+                        src="data:image/jpeg;base64, {{ character['avatar_base64'] }}"
+                        alt="User avatar"
+                        class="img-fluid rounded-circle"
+                        style="max-width: 96px;"
+                    >
+                    <h3 class="align-self-center ms-3">{{character["name"]}}</h3>
+                </div>
+
+                <!-- Buttons -->
+                <div class="col d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-primary">
+                        <i data-feather="edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-primary">
+                        <i data-feather="trash"></i>
+                    </button>
+                    <button type="button" class="btn btn-primary" value="{{character['name']}}">Gioca</button>
+                </div>
+            </div>
+
+        {% endfor %}
+
+        <!-- Create new character Row -->
+        <div class="row col-8 text-bg-primary align-items-center p-2 rounded-2 character-row-card">
             <div class="col d-flex justify-content-start">
                 <div class="btn btn-light">Create a new character...</div>
             </div>
