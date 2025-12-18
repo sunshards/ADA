@@ -8,6 +8,7 @@
     <script>
         // url inserted by the jinja render_template() 
         const uploadUrl = "{{ url_for('creation.upload') }}";
+        const characterSelectURL = " {{url_for('selection.selection')}} "
         character = {{ character|tojson }}
     </script>
     <script type="text/javascript" src="{{ url_for('static', filename='character_sheet/character_sheet.js') }}"></script>

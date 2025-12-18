@@ -41,9 +41,11 @@ submitButton.addEventListener('click', async() => {
     if (avatarChanged) {
       formData.append('image', newAvatar);
     }
-    const res = await fetch(uploadUrl, { method: 'POST', body: formData });
 
-    // reading the response
+    const res = await fetch(uploadUrl, { method: 'POST', body: formData });
+    window.location.href = characterSelectURL;
+
+    // read the response
     // const data = await res.json();
 })
 
