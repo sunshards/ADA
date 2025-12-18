@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const messagesContainer = document.querySelector('.card-body');
     const messageTextarea = document.querySelector('textarea.form-control');
     const sendButton = document.getElementById('sendButton');
-    const playerContainer = document.getElementById('player-container')
 
     let socket = null;
     let currentUser = null;
@@ -111,7 +110,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function handleNewMessage(data) {
-        console.log('received new message')
         // Add incoming message to chat
         addMessageToChat(data, 'incoming');
         playNotificationSound();
@@ -385,16 +383,17 @@ function addPlayerCard(username, avatar_src, life_percentage=100) {
         lifebarContainer.class = 'progress lifebar-container'
         lifebarContainer.setAttribute('role', 'lifebar')
         lifebarContainer.setAttribute('aria-label', 'Lifebar')
-        lifebarContainer.setAttribute('aria-valuenow',  String(percentage))
+        lifebarContainer.setAttribute('aria-valuenow',  String(life_percentage))
         lifebarContainer.setAttribute('aria-valuemin', '0')
         lifebarContainer.setAttribute('aria-valuemax', '100')
 
         const lifebarHealth = document.createElement('div');
         lifebarHealth.class = "progress-bar lifebar-health"
-        lifebarHealth.style = `width: ${percentage}`
+        lifebarHealth.style = `width: ${life_percentage}`
 
 
         // Assemble
+        const playerContainer = document.getElementById('player-container')
         playerContainer.appendChild(playerCard)
 
         playerCard.appendChild(playerAvatar)
