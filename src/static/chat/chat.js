@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const messagesContainer = document.querySelector('.card-body');
     const messageTextarea = document.querySelector('textarea.form-control');
     const sendButton = document.getElementById('sendButton');
+    const playerContainer = document.getElementById('player-container')
+
     let socket = null;
     let currentUser = null;
     let currentRoom = 'default';
@@ -124,13 +126,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleUserJoined(data) {
         // Show user joined notification
         showSystemMessage(`${data.username} joined the chat`, 'info');
-        
+        addPlayerCard(data.username, data.avatar)
         // Update users list, fetch updated list or update locally
     }
 
     function handleUserLeft(data) {
         // Show user left notification
         showSystemMessage(`${data.username} left the chat`, 'info');
+        removePlayerCard(data.username)
     }
 
     function handleUserTyping(data) {
@@ -356,3 +359,54 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 });
+
+
+function addPlayerCard(username, avatar_src, life_percentage=100) {
+
+        // Create HTML elements
+    
+        const playerCard = document.createElement('div');
+        playerCard.class = 'mb-4 player-card rounded-1';
+        playerCard.id = username; //used for removal
+    
+        const playerAvatar = document.createElement('img')
+        playerAvatar.class = "card-img-top player-avatar"
+        playerAvatar.setAttribute('alt', 'Player Avatar')
+        playerAvatar.setAttribute('src', avatar_src)
+
+        const playerInfo = document.createElement('div');
+        playerInfo.class = 'player-info';     
+        
+        const playerName = document.createElement('span');
+        playerName.class = 'player-name';
+        playerName.innerHTML = username;
+
+        const lifebarContainer = document.createElement('div');
+        lifebarContainer.class = 'progress lifebar-container'
+        lifebarContainer.setAttribute('role', 'lifebar')
+        lifebarContainer.setAttribute('aria-label', 'Lifebar')
+        lifebarContainer.setAttribute('aria-valuenow',  String(percentage))
+        lifebarContainer.setAttribute('aria-valuemin', '0')
+        lifebarContainer.setAttribute('aria-valuemax', '100')
+
+        const lifebarHealth = document.createElement('div');
+        lifebarHealth.class = "progress-bar lifebar-health"
+        lifebarHealth.style = `width: ${percentage}`
+
+
+        // Assemble
+        playerContainer.appendChild(playerCard)
+
+        playerCard.appendChild(playerAvatar)
+        playerCard.appendChild(playerInfo)
+
+        playerInfo.appendChild(playerName)
+        playerInfo.appendChild(lifebarContainer)
+
+        lifebarContainer.appendChild(lifebarHealth)
+}
+
+function removePlayerCard(username) {
+    const playerCard = document.getElementById(username);
+    playerCard.remove();
+}
