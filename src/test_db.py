@@ -1,22 +1,19 @@
 import os
 import random
+import time
 from flask import Flask
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from bson.objectid import ObjectId
 
-from src.brain import load_character, save_character
+# Import the new monolith functions
+from src.brain import load_character, save_monolith_to_db, resume_adventure 
 
 load_dotenv()
 
-# Command to run this test file directly:
-# python -m src.test_db
-
-def test_load_and_save():
-    # 1. Setup the Flask app shell to provide current_app.db
+def test_monolith_flow():
+    # 1. Setup the Flask app shell
     app = Flask(__name__)
-    
-    # 2. Connect to the EXACT database name used in __init__.py
     connection_string = os.getenv("CONNECTION_STRING")
     client = MongoClient(connection_string)
     app.db = client["ADADatabase"] 
@@ -24,46 +21,51 @@ def test_load_and_save():
     with app.app_context():
         target_id = "6943f1e9b2b9aad9d81bb75f"
         
-        print(f"--- Testing Load for ID: {target_id} ---")
+        print(f"--- 1. Testing INITIAL LOAD ---")
         character = load_character(target_id)
         
-        if character:
-            print(f"[SUCCESS] Loaded Character: {character.get('name')}")
-            
-            # --- START SAVE TEST ---
-            original_hp = character.get('current_hp', 50)
-            # Create a random value to prove the update actually happened
-            new_hp_value = random.randint(1, 30) 
-            
-            print(f"--- Testing Save: Changing HP from {original_hp} to {new_hp_value} ---")
-            character['current_hp'] = new_hp_value
-            
-            save_success = save_character(character)
-            
-            if save_success:
-                # 3. Re-fetch from DB to verify it actually saved
-                # We bypass load_character cache and check the collection directly
-                verified_char = app.db['Characters'].find_one({"_id": ObjectId(target_id)})
-                
-                if verified_char and verified_char.get('current_hp') == new_hp_value:
-                    print(f"[VERIFIED] Database successfully updated to {new_hp_value} HP!")
-                else:
-                    print("[FAILURE] Save reported success, but database value did not match!")
-            else:
-                print("[FAILURE] The save_character function returned False.")
-            # --- END SAVE TEST ---
+        if not character:
+            print("[FAILURE] Could not find base character. Aborting test.")
+            return
 
-        else:
-            # Check both collections for debugging
-            raw_user = app.db['Users'].find_one({"_id": ObjectId(target_id)})
-            raw_char = app.db['Characters'].find_one({"_id": ObjectId(target_id)})
+        # 2. Create a Mock Monolith
+        # This simulates the state during active gameplay
+        monolith = {
+            "character": character,
+            "items_definitions": {
+                "Health Potion": {"name": "Health Potion", "itemType": "consumable", "value": 10}
+            },
+            "long_term_memory": f"Test memory created at {time.ctime()}",
+            "recent_history": [{"role": "user", "content": "Hello ADA!"}],
+            "turn_count": random.randint(1, 100),
+            "state": {"location": "Test Dungeon", "quest": "Verify Monolith"}
+        }
+
+        print(f"--- 2. Testing MONOLITH SAVE ---")
+        # Saves to 'ResumeAdventure' collection
+        save_success = save_monolith_to_db(monolith)
+        
+        if save_success:
+            print("[SUCCESS] Monolith saved to 'ResumeAdventure' collection.")
             
-            if raw_char:
-                print(f"[HINT] Document exists in 'Characters' collection. Update load_character() to look there.")
-            elif raw_user:
-                print(f"[HINT] Document exists in 'Users' collection.")
+            print(f"--- 3. Testing ADVENTURE RESUME ---")
+            # Reconstructs the state from 'ResumeAdventure'
+            resumed_monolith = resume_adventure(target_id)
+            
+            if resumed_monolith:
+                # Verification of key data points
+                check_turn = resumed_monolith.get("turn_count") == monolith["turn_count"]
+                check_memory = resumed_monolith.get("long_term_memory") == monolith["long_term_memory"]
+                
+                if check_turn and check_memory:
+                    print(f"[VERIFIED] Adventure successfully resumed at turn {resumed_monolith['turn_count']}!")
+                    print(f"Memory Restored: {resumed_monolith['long_term_memory']}")
+                else:
+                    print("[FAILURE] Resumed data does not match saved data.")
             else:
-                print(f"[NOT FOUND] ID {target_id} does not exist in Users or Characters.")
+                print("[FAILURE] resume_adventure returned None.")
+        else:
+            print("[FAILURE] save_monolith_to_db returned False.")
 
 if __name__ == "__main__":
-    test_load_and_save()
+    test_monolith_flow()
