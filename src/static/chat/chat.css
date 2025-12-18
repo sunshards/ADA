@@ -1,4 +1,4 @@
-/* static/chat/chat.css */
+html, body {overflow: hidden;}
 
 /* Chat container */
 .card-body {
@@ -79,4 +79,29 @@
 
 .overflow-y-scroll::-webkit-scrollbar-thumb:hover {
     background: #555;
+}
+
+
+.player-column {
+        max-height: 85%;
+}
+.player-card {
+    background-color: white;
+    border: black solid;
+    padding: 5px;
+    box-sizing: border-box !important;
+}
+.player-box {
+    background-color: beige;
+}
+
+.player-avatar {
+    width: 5rem;
+}
+
+.lifebar-container {
+    height: 0.5rem;
+}
+.lifebar-health {
+    background-color: red;
 }
