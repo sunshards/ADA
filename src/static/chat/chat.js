@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initChat();
     
     function initChat() {
-        // Get user data from your application (adjust as needed)
+        // data in window passed from jinja template
         currentUser = {
             id: window.userId,
             username: window.username,
@@ -75,8 +75,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Send button click (if you add one)
-        // sendButton.addEventListener('click', sendMessage);
+        // Send button in chat
+        sendButton.addEventListener('click', sendMessage);
         
         // Typing indicator
         messageTextarea.addEventListener('input', handleTyping);
@@ -102,11 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleConnected(data) {
         console.log('Successfully connected:', data);
         updateConnectionStatus('Connected', 'success');
-        
-        // Update users list if needed
-        if (data.users_in_room) {
-            updateUsersList(data.users_in_room);
-        }
+        refreshPlayerCards(data.active_users)
     }
 
     function handleNewMessage(data) {
@@ -124,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function handleUserJoined(data) {
         // Show user joined notification
         showSystemMessage(`${data.username} joined the chat`, 'info');
-        addPlayerCard(data.username, data.avatar)
+        refreshPlayerCards(data.active_users)
         // Update users list, fetch updated list or update locally
     }
 
@@ -407,4 +403,14 @@ function addPlayerCard(username, avatar_src, life_percentage=100) {
 function removePlayerCard(username) {
     const playerCard = document.getElementById(username);
     playerCard.remove();
+}
+
+function refreshPlayerCards(users) {
+    player_cards = document.getElementsByClassName('player-card')
+    for (card of player_cards) {
+        card.remove()
+    }
+    for ([sid, user] of Object.entries(users)) {
+        addPlayerCard(user["username"], user["avatar"], 100)
+    }
 }

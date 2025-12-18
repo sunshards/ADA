@@ -56,7 +56,8 @@ def handle_connect():
         'user_id': user_id,
         'username': username,
         'sid': request.sid,
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now().isoformat(),
+        'active_users' : active_users
     }, room=room, skip_sid=request.sid)
     
     # Send connection confirmation
@@ -64,7 +65,7 @@ def handle_connect():
         'status': 'success',
         'message': 'Connected to chat server',
         'room': room,
-        'users_in_room': get_users_in_room(room)
+        'active_users' : active_users
     })
 
 @socketio.on('disconnect')
