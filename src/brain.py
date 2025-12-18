@@ -1276,17 +1276,17 @@ def load_character(character_id_str):
 
 
 
-#!!! CHARACTER_ID should be set externally before running main()
+#!!! character_id should be set externally before running main()
 
 # --- Game Loop ---
-def main():
+def main(character_id):
     # Python has to explicitly state that we are using the global variables (the serpent is cleraly not fit to be a C competitor :-P)
     global long_term_memory
     global turn_count
     global recent_history
     global mana_regen_per_turn
     global character
-    global CHARACTER_ID
+   
     print("=== ADA TI DA' IL BENVENUTO ===")
     #    print("\nDescribe your character in your own words (free text):")
     #    user_desc = input("> ")
@@ -1294,7 +1294,7 @@ def main():
     #    character = create_character_from_description(user_desc)
     
     # 1. Load the character from the database
-    character_data = load_character(CHARACTER_ID)
+    character_data = load_character(character_id)
     
     if character_data:
         character = character_data
@@ -1452,7 +1452,8 @@ def main():
             print(f"Raw response: {output}")
 
 if __name__ == "__main__":
-    main()
+    test_character_id = '6943f1e9b2b9aad9d81bb75f'
+    main(test_character_id)
 
 
 
