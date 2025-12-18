@@ -1274,6 +1274,38 @@ def load_character(character_id_str):
         return None
 
 
+# Saves the updated character data back to the MongoDB 'Characters' collection.
+def save_character(character_data):
+    try:
+        # We need the ID to know which document to update
+        char_id = character_data.get("_id")
+        if not char_id:
+            print("[ERROR] Character data has no _id. Cannot save.")
+            return False
+
+        # Ensure we are using an ObjectId for the filter
+        if isinstance(char_id, str):
+            char_id = ObjectId(char_id)
+
+        # Prepare the data: Remove the _id from the update body to avoid errors
+        update_data = character_data.copy()
+        update_data.pop("_id", None)
+
+        # Update the document in the 'Characters' collection
+        result = current_app.db['Characters'].update_one(
+            {"_id": char_id},
+            {"$set": update_data}
+        )
+
+        if result.modified_count > 0:
+            print(f"[SUCCESS] Character '{character_data.get('name')}' saved to database.")
+        else:
+            print("[INFO] No changes detected; database is already up to date.")
+        return True
+
+    except Exception as e:
+        print(f"[ERROR] Failed to save character to database: {e}")
+        return False
 
 
 #!!! character_id should be set externally before running main()
@@ -1331,7 +1363,9 @@ def main(character_id):
         user_input = input("\n What do you do? (type 'quit' to quit) \n> ")
         
         if user_input.lower() in ["exit", "quit", "esci"]:
-            print("Saving game (lie), Goodbye!")
+            print("Saving game (not lie anymore) and exiting...")
+            save_character(character)  # Save character on DataBase
+            print("Game saved. Goodbye!")
             break
 
         recent_history.append({"role": "user", "content": user_input})
@@ -1367,7 +1401,8 @@ def main(character_id):
                     # Give the player a moment before continuing
                     input("Press Enter to continue...")
                 else:
-                    print("\nGame Over!")
+                    # Implement a character death scenario
+                    print("\nGame Over! it was indeed dangerous to go alone, Zelda...") # I know that its Link, but c'mon... its funnier this way :-P
                     break
             
             #! ================= FORCED ENCOUNTER FROM AI =================
@@ -1449,7 +1484,6 @@ def main(character_id):
 
         except Exception as e:
             print(f"\n[NARRATOR ERROR] The master is confused: {e}")
-            print(f"Raw response: {output}")
 
 if __name__ == "__main__":
     test_character_id = '6943f1e9b2b9aad9d81bb75f'

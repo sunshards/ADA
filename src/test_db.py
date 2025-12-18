@@ -3,45 +3,55 @@ from flask import Flask
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from bson.objectid import ObjectId
-from src.brain import load_character
+# Import both functions for the test
+from src.brain import load_character, save_character 
 
 load_dotenv()
 
-example_character_id = ObjectId("6943f1e9b2b9aad9d81bb75f")
+target_id = "6943f1e9b2b9aad9d81bb75f"
 
-# Test function to verify MongoDB connection and character loading
-def test_load():
-    # 1. Setup the Flask app shell to provide current_app.db
+def setup_test_app():
+    """Helper to setup the Flask app context and DB connection."""
     app = Flask(__name__)
-    
-    # 2. Connect to the EXACT database name used in __init__.py
     connection_string = os.getenv("CONNECTION_STRING")
     client = MongoClient(connection_string)
-    app.db = client["ADADatabase"] # Must match __init__.py
+    app.db = client["ADADatabase"] 
+    return app
+
+def test_load_and_save():
+    app = setup_test_app()
 
     with app.app_context():
-        # The ID from your prompt
-        target_id = "6943f1e9b2b9aad9d81bb75f"
-        
-        collections = app.db.list_collection_names()
-        print(f"MongoDB works! Collections: {collections}")
-
-        print(f"--- Searching in {app.db.name}.Users ---")
+        print(f"--- Testing LOAD for ID: {target_id} ---")
         character = load_character(target_id)
         
-        if character:
-            print(f"[SUCCESS] Loaded Character: {character.get('name')}")
-            print(f"id: {character.get('_id')} ")
-            print(f"Stats: {character.get('stats')}")
-            print(f"Inventory: {character.get('inventory')}")
-        else:
-            # Debugging the document structure
-            raw_user = app.db['Users'].find_one({"_id": ObjectId(target_id)})
-            if raw_user:
-                print("[STRUCTURE ERROR] User found, but 'Characters' array is missing or empty.")
-                print(f"Keys found in document: {list(raw_user.keys())}")
+        if not character:
+            print("[FAIL] Character not found. Cannot proceed with save test.")
+            return
+
+        print(f"[SUCCESS] Loaded: {character.get('name')}")
+        
+        # --- TEST SAVE FUNCTION ---
+        print(f"\n--- Testing SAVE for ID: {target_id} ---")
+        
+        # 1. Modify a value (e.g., increment gold)
+        original_gold = character.get("gold", 0)
+        new_gold_value = original_gold + 10
+        character["gold"] = new_gold_value
+        print(f"Attempting to update gold: {original_gold} -> {new_gold_value}")
+
+        # 2. Call the save function
+        save_success = save_character(character)
+        
+        if save_success:
+            # 3. Verify by re-fetching from the DB
+            updated_char = load_character(target_id)
+            if updated_char.get("gold") == new_gold_value:
+                print(f"[SUCCESS] Database updated! New gold: {updated_char.get('gold')}")
             else:
-                print("[NOT FOUND] No document exists with that ObjectId in 'ADADatabase.Users'.")
+                print(f"[FAIL] Save returned True, but data in DB is {updated_char.get('gold')}")
+        else:
+            print("[FAIL] save_character function returned False.")
 
 if __name__ == "__main__":
-    test_load()
+    test_load_and_save()
