@@ -1,5 +1,6 @@
 // static/chat/chat.js
 document.addEventListener('DOMContentLoaded', function() {
+
     // DOM Elements
     const messagesContainer = document.querySelector('.card-body');
     const messageTextarea = document.querySelector('textarea.form-control');
@@ -16,9 +17,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function initChat() {
         // Get user data from your application (adjust as needed)
         currentUser = {
-            id: window.userId || 'user_' + Math.random().toString(36).substr(2, 9),
-            username: window.username || 'Anonymous',
-            avatar: window.avatar || 'default.png'
+            id: window.userId,
+            username: window.username,
+            avatar: 'default.png' // window.avatar
         };
         
         // Connect to Socket.IO
@@ -28,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setupEventListeners();
         
         // Load existing messages (optional)
-        loadExistingMessages();
+        // loadExistingMessages();
     }
 
     function connectSocket() {

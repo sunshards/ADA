@@ -5,25 +5,19 @@
 {% endblock %}
 
 {% block js %}
-    <!-- FIRST: Set user variables for JavaScript -->
-    <script type="text/javascript">
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+
+        <script>
         // Set global variables from Flask template data
-        window.userId = "{{ user_id|default('')|tojson|safe }}";
-        window.username = "{{ username|default('Anonymous')|tojson|safe }}";
-        window.avatar = "{{ url_for('static', filename='temp/avatar_animal_00001.png')|tojson|safe }}";
+        const userId = "{{ user_id|default('')|safe }}";
+        const username =  "{{ username|default('Anonymous')|safe }}";
         
-        // If you have different avatars per user, use this:
-        {% if avatar %}
-            window.avatar = "{{ url_for('static', filename=avatar)|tojson|safe }}";
-        {% else %}
-            window.avatar = "{{ url_for('static', filename='temp/avatar_animal_00001.png')|tojson|safe }}";
-        {% endif %}
+        // Make them available globally by attaching to window
+        window.userId = userId || 'user_' + Math.random().toString(36).substr(2, 9);
+        window.username = username || 'Anonymous';
         
-        // Debug: log user info
-        console.log('Chat initialized for:', window.username);
     </script>
 
-    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='chat/chat.js') }}"></script>
 {% endblock %}
 

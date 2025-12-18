@@ -1,31 +1,13 @@
-test_messages = [
-        {"type": "out", "value": "a"},
-        {"type": "out", "value": "b"},
-        {"type": "in",  "value": "c"},
-        {"type": "out", "value": "d"},
-        {"type": "in",  "value": "e"},
-        {"type": "out", "value": "f"},
-        {"type": "out", "value": "g"},
-        {"type": "out", "value": "g"},
-        {"type": "out", "value": "g"},
-        {"type": "out", "value": "g"},
-]
-
-test_players = [
-        {"username" : "Pippo", "MAX_HP": 10, "HP": 10, "percentage": 100},
-        {"username" : "Giacomo", "MAX_HP": 23, "HP": 15, "percentage": 65.2},
-        {"username" : "Anacleto", "MAX_HP": 11, "HP": 8, "percentage": 72.7 },
-        {"username" : "Bimbo", "MAX_HP": 0, "HP": 0, "percentage": 0 }
-]
-
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, url_for, jsonify, session
+    Blueprint, flash, g, redirect, render_template, request, url_for, jsonify, session, current_app
 )
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import json
+from bson.objectid import ObjectId
 from src import socketio
 from datetime import datetime
 bp = Blueprint('chat', __name__, url_prefix='/chat')
+import uuid
 
 # In-memory storage for demo (use database in production)
 active_users = {}
@@ -35,25 +17,27 @@ chat_rooms = {}
 def chat():
     # Get user from session (adjust based on your auth system)
     user_id = session.get('user_id')
-    username = session.get('username', 'Anonymous')
+    user = current_app.db['Users'].find_one({"_id": ObjectId(user_id)})
+    username = user["Username"]
     
     # You might get avatar from database or session
-    avatar = session.get('avatar', 'temp/avatar_animal_00001.png')
+    # avatar = session.get('avatar', 'temp/avatar_animal_00001.png')
     
-    # Get messages and players (as you already do)
-    messages = []  # From your database
-    players = []   # From your database
+    # Get messages and players 
+    messages = []  # From database
+    players = []   # From database
     
     return render_template('chat/chat.html',
                             user_id=user_id,
                             username=username,
-                            avatar=avatar,
+                            # avatar=avatar,
                             messages=messages,
                             players=players)
 
 @socketio.on('connect')
 def handle_connect():
     user_id = request.args.get('user_id') or 'anonymous'
+    username = request.args.get('username') or 'anonymous'
     room = request.args.get('room', 'default')
     
     # Store connection info
@@ -67,7 +51,7 @@ def handle_connect():
     
     # Notify others in the room
     emit('user_joined', {
-        'user_id': user_id,
+        'user_id': username,
         'sid': request.sid,
         'timestamp': datetime.now().isoformat()
     }, room=room, skip_sid=request.sid)
