@@ -15,6 +15,7 @@ BASE_DIR = Path(__file__).resolve().parent
 json_path = BASE_DIR / "json_exp"
 skill_path = json_path / "skill.json"
 item_path = json_path / "item.json"
+enemy_path = json_path / "enemies.json"
 
 
 
@@ -536,6 +537,22 @@ def weapon_base_damage(weapon_item: dict) -> int:
     return {"total": total, "rolls": all_rolls}
 
 
+# Decide who starts combat using DEX.
+def determine_initiative(player: dict, enemy: dict):
+    while True:
+        player_roll = roll_d20() + stat_modifier(player["stats"]["DEX"])
+        enemy_roll  = roll_d20() + stat_modifier(enemy["stats"]["DEX"])
+
+        print(f"[INITIATIVE] {player['name']} rolls {player_roll} | {enemy['name']} rolls {enemy_roll}")
+
+        if player_roll > enemy_roll:
+            return [player, enemy]
+        elif enemy_roll > player_roll:
+            return [enemy, player]
+        else:
+            print("[INITIATIVE] Tie! Rerolling...")
+
+
 # Perform an attack (weapon or skill) and return combat result.
 def combat_attack(attacker, defender, skill=None, weapon_item=None):
     result_data = {"result": "miss", "damage": 0, "defender_hp": defender.get("current_hp", 0), "skill_rolls": [], "weapon_rolls": []}
@@ -635,30 +652,119 @@ def use_item(character, real_name, items):
 
 
 # Parse free-text player input using AI and return one of the four actions
-def get_action_from_ai(user_input: str) -> str:
+def get_action_from_ai(user_input: str, character: dict) -> str:
+    print(f"\n[AI Parser] Analyzing: '{user_input}'")
+    
+    # Get character's actual skills and items
+    character_skills = character.get("skills", [])
+    character_items = character.get("inventory", [])
+    
+    # Find available skills from database
+    available_skills = []
+    for skill_name in character_skills:
+        skill = get_skill_by_name(skill_name, SKILLS_DB)
+        if skill:
+            available_skills.append(skill)
+    
+    # Find available items from database
+    available_items = []
+    for item_name in character_items:
+        item = get_item_by_name(item_name, ITEMS_DB)
+        if item:
+            available_items.append(item)
+    
+    print(f"[AI Parser] Character has {len(available_skills)} skills: {[s['name'] for s in available_skills]}")
+    print(f"[AI Parser] Character has {len(available_items)} items: {[i['name'] for i in available_items]}")
+    
+    # Check if input matches any skill
+    if available_skills:
+        # Find the most similar skill to user input
+        best_skill, skill_similarity = find_most_similar_item(user_input, available_skills)
+        print(f"[AI Parser] Best skill match: '{best_skill['name']}' (similarity: {skill_similarity:.2f})")
+        
+        if skill_similarity > 0.3:  # Good enough match
+            print(f"[AI Parser] Returning 'use skill' with skill: {best_skill['name']}")
+            # Store the selected skill in a global or return it somehow
+            # For now, we'll modify the character to track selected skill
+            character["_selected_skill"] = best_skill["name"]
+            return "use skill"
+    
+    # Check if input matches any item
+    if available_items:
+        best_item, item_similarity = find_most_similar_item(user_input, available_items)
+        print(f"[AI Parser] Best item match: '{best_item['name']}' (similarity: {item_similarity:.2f})")
+        
+        if item_similarity > 0.3:
+            print(f"[AI Parser] Returning 'use item' with item: {best_item['name']}")
+            character["_selected_item"] = best_item["name"]
+            return "use item"
+    
+    # Check for attack keywords
+    attack_keywords = ["attack", "hit", "strike", "slash", "shoot", "swing", "bash", "bow", "sword", "arrow", "melee"]
+    user_input_lower = user_input.lower()
+    for keyword in attack_keywords:
+        if keyword in user_input_lower:
+            print(f"[AI Parser] Detected attack keyword: '{keyword}'")
+            return "attack"
+    
+    # Check for run keywords
+    run_keywords = ["run", "flee", "escape", "retreat", "withdraw", "leave"]
+    for keyword in run_keywords:
+        if keyword in user_input_lower:
+            print(f"[AI Parser] Detected run keyword: '{keyword}'")
+            return "run"
+    
+    # Fallback: Ask AI to decide
+    print("[AI Parser] Using AI to decide action...")
+    
+    # Prepare skill and item info for the AI
+    skill_info = ""
+    if available_skills:
+        skill_info = "Available skills: " + ", ".join([f"{s['name']} ({s['type']})" for s in available_skills])
+    
+    item_info = ""
+    if available_items:
+        item_info = "Available items: " + ", ".join([f"{i['name']} ({i['itemType']})" for i in available_items])
+    
     prompt = [
         {
             "role": "system",
-            "content": (
-                "You are a parser. Convert the player's input into a single action: "
-                "attack, use skill, use item, or run. "
-                "Return ONLY valid JSON like {\"action\": \"attack\"}."
-            ),
-        },
-        {"role": "user", "content": f"Player wrote: '{user_input}'"}
-    ]
+            "content": f"""You are a combat action parser. Analyze the player's input and decide the best action.
+Character has: {skill_info} {item_info}
+Possible actions: attack, use skill, use item, run
 
+Return JSON with:
+- action: one of "attack", "use skill", "use item", "run"
+- target_skill: (if action is "use skill") the skill name from available skills
+- target_item: (if action is "use item") the item name from available items
+- confidence: 0.0 to 1.0 how confident you are
+
+Example: {{"action": "use skill", "target_skill": "Fire Bolt", "confidence": 0.8}}"""
+        },
+        {"role": "user", "content": f"Player says: '{user_input}'"}
+    ]
+    
     try:
         raw = narrate(prompt)
         parsed = extract_json(raw)
         action = parsed.get("action", "attack").lower()
-        if action not in ["attack", "use skill", "use item", "run"]:
-            print("[AI Parser] Invalid action returned. Defaulting to attack.")
-            action = "attack"
+        
+        # Store selected skill/item if provided by AI
+        if action == "use skill" and "target_skill" in parsed:
+            character["_selected_skill"] = parsed["target_skill"]
+            print(f"[AI Parser] AI selected skill: {parsed['target_skill']}")
+        elif action == "use item" and "target_item" in parsed:
+            character["_selected_item"] = parsed["target_item"]
+            print(f"[AI Parser] AI selected item: {parsed['target_item']}")
+        
+        confidence = parsed.get("confidence", 0.5)
+        print(f"[AI Parser] AI decided: {action} (confidence: {confidence})")
+        
         return action
     except Exception as e:
         print(f"[AI Parser Error] {e}. Defaulting to attack.")
         return "attack"
+
 
 
 
@@ -676,123 +782,404 @@ with open(skill_path, "r", encoding="utf-8") as f:
 with open(item_path, "r", encoding="utf-8") as f:
     ITEMS_DB = json.load(f)
 
+try:
+    with open(enemy_path, "r", encoding="utf-8") as f:
+        enemies_data = json.load(f)
+    
+    # Ensure ENEMIES_DB is always a list
+    if isinstance(enemies_data, dict):
+        # If single enemy object, wrap in list
+        ENEMIES_DB = [enemies_data]
+    elif isinstance(enemies_data, list):
+        ENEMIES_DB = enemies_data
+    else:
+        print(f"[ERROR] Invalid enemies.json format. Expected dict or list, got {type(enemies_data)}")
+        ENEMIES_DB = []
+except Exception as e:
+    print(f"[ERROR] Failed to load enemies.json: {e}")
+    ENEMIES_DB = []
 
-def combat_loop(player, enemy, items, state, mode="manual", similarity_threshold=0.3):
-    print(f"\n[COMBAT START] You encounter a {enemy['name']}!")
 
+
+
+
+def combat_loop(player, enemies, items, state, mode="manual", similarity_threshold=0.3):
+    print(f"\n[COMBAT START] You encounter {len(enemies)} enemies!")
+    for i, enemy in enumerate(enemies):
+        print(f"  {i+1}. {enemy['name']} (Level {enemy['level']}, HP: {enemy['current_hp']}/{enemy['max_hp']})")
+    
+    # Track which enemies are alive
+    alive_enemies = enemies.copy()
+    current_enemy_index = 0
+    
     combat_history = []
 
-    while player["current_hp"] > 0 and enemy["current_hp"] > 0:
-        print(f"\n[Status] {player['name']} Hp: {player['current_hp']}/{player['max_hp']}, Mana: {player['mana']} | {enemy['name']} Hp: {enemy['current_hp']}/{enemy['max_hp']}")
+    while player["current_hp"] > 0 and alive_enemies:
+        # Get current enemy to fight
+        current_enemy = alive_enemies[current_enemy_index]
+        
+        print(f"\n[Status] {player['name']} HP: {player['current_hp']}/{player['max_hp']}, Mana: {player['mana']}")
+        print(f"Alive enemies: {len(alive_enemies)}")
+        for i, enemy in enumerate(alive_enemies):
+            marker = ">" if i == current_enemy_index else " "
+            print(f"  {marker} {i+1}. {enemy['name']} - HP: {enemy['current_hp']}/{enemy['max_hp']}")
 
-        user_input = input("Describe your action: ").strip()
-
-        # Recognized basic actions
-        recognized_actions = ["attack", "use skill", "use item", "run"]
-
-        if user_input.lower() in recognized_actions:
-            action = user_input.lower()
-        else:
-            print("Parsing input via AI...")
-            action = get_action_from_ai(user_input)
-
-        # Check if the input is realistic
-        # If using an item or skill, check similarity to available ones
-        realistic = True
-        item_or_skill_name = None
-        if action == "use skill" and player.get("skills"):
-            skill = get_skill_by_name(player["skills"][0], SKILLS_DB)
-            item_or_skill_name = skill["name"]
-        #   V   <-- We dont use the most similar item, but only need the similarity
-            _, sim = find_most_similar_item(user_input, [{"description": skill["description"], "name": skill["name"]}])
-            if sim < similarity_threshold:
-                realistic = False
-
-        elif action == "use item" and player.get("inventory"):
-            inventory_items = [get_item_by_name(name, items) for name in player["inventory"]]
-            matched_item, sim = find_most_similar_item(user_input, inventory_items)
-            item_or_skill_name = matched_item["name"]
-            if sim < similarity_threshold:
-                realistic = False
-
-        # If unrealistic, player wastes the turn
-        if not realistic:
-            print(f"{player['name']} is greatly confused and wastes their turn!")
-            enemy_weapon = next((i for i in items if i["name"] == enemy.get("equipped_weapon", "")), None)
-            result = combat_attack(enemy, player, weapon_item=enemy_weapon)
-            print(f"[Enemy Turn] {enemy['name']} hits and deals {result['damage']} damage!")
-            continue
-
-        # Perform the chosen action
-        turn_summary = ""
+        #! ================= PLAYER TURN =================
+        user_input = input("\nDescribe your action (or 'target X' to switch enemy): ").strip()
+        
+        # Check if player wants to switch target
+        if user_input.lower().startswith("target "):
+            try:
+                target_num = int(user_input.split()[1])
+                if 1 <= target_num <= len(alive_enemies):
+                    current_enemy_index = target_num - 1
+                    print(f"Switched target to {alive_enemies[current_enemy_index]['name']}")
+                    continue
+                else:
+                    print(f"Invalid target number. Choose 1-{len(alive_enemies)}")
+                    continue
+            except (ValueError, IndexError):
+                print("Usage: 'target X' where X is enemy number")
+                continue
+        
+        # Parse player action with intelligent AI
+        action = get_action_from_ai(user_input, player)
+        
+        # Clear previous selections
+        selected_skill = player.pop("_selected_skill", None)
+        selected_item = player.pop("_selected_item", None)
+        
+        # Execute player action
+        combat_text = ""
+        
         if action == "attack":
-            weapon_item = next((i for i in items if i["name"] == player['equipped_weapon']), None)
-            result = combat_attack(player, enemy, weapon_item=weapon_item)
-            rolls_str = " + ".join(str(r) for r in result["weapon_rolls"]) if result["weapon_rolls"] else "no rolls"
-            turn_summary = f"You attack with {player['equipped_weapon']} -> hit for {result['damage']}. Rolls: {rolls_str}"
+            weapon_item = get_item_by_name(player["equipped_weapon"], items)
+            result = combat_attack(player, current_enemy, weapon_item=weapon_item)
+            rolls = result["weapon_rolls"] or []
+            combat_text = f"You attack {current_enemy['name']} with {player['equipped_weapon']} for {result['damage']} damage."
+            if rolls:
+                combat_text += f" Rolls: {rolls}"
+            
+            # Check if enemy died
+            if current_enemy["current_hp"] <= 0:
+                combat_text += f"\n{current_enemy['name']} has been defeated!"
+                alive_enemies.pop(current_enemy_index)
+                if current_enemy_index >= len(alive_enemies) and alive_enemies:
+                    current_enemy_index = len(alive_enemies) - 1
 
         elif action == "use skill":
-            result = combat_attack(player, enemy, skill=skill)
-            rolls_str = " + ".join(str(r) for r in result["skill_rolls"]) if result["skill_rolls"] else "no rolls"
-            turn_summary = f"You use {skill['name']} -> hit for {result['damage']}. Rolls: {rolls_str}"
+            # Use the skill selected by the AI parser
+            if selected_skill:
+                skill = get_skill_by_name(selected_skill, SKILLS_DB)
+                if skill:
+                    # Check if player has enough mana
+                    mana_cost = 0
+                    if skill.get("effects"):
+                        for effect in skill["effects"]:
+                            mana_cost += effect.get("mana_cost", 0)
+                    
+                    if mana_cost > 0 and player.get("mana", 0) < mana_cost:
+                        combat_text = f"You try to cast {skill['name']} but don't have enough mana! (Need: {mana_cost}, Have: {player.get('mana', 0)})"
+                    else:
+                        # For magic skills, create dummy weapon item
+                        weapon_item = None
+                        if skill["type"] in ("magic", "buff", "debuff"):
+                            weapon_item = {"subType": "melee"}
+                        
+                        result = combat_attack(player, current_enemy, skill=skill, weapon_item=weapon_item)
+                        rolls = result["skill_rolls"] or []
+                        
+                        combat_text = f"You cast {skill['name']} on {current_enemy['name']} for {result['damage']} damage."
+                        if rolls:
+                            combat_text += f" Rolls: {rolls}"
+                        
+                        if mana_cost > 0:
+                            combat_text += f" (Mana cost: {mana_cost})"
+                        
+                        # Check if enemy died
+                        if current_enemy["current_hp"] <= 0:
+                            combat_text += f"\n{current_enemy['name']} has been defeated!"
+                            alive_enemies.pop(current_enemy_index)
+                            if current_enemy_index >= len(alive_enemies) and alive_enemies:
+                                current_enemy_index = len(alive_enemies) - 1
+                else:
+                    combat_text = f"Skill '{selected_skill}' not found!"
+            else:
+                # Try to use first skill if none selected
+                if player.get("skills"):
+                    skill_name = player["skills"][0]
+                    skill = get_skill_by_name(skill_name, SKILLS_DB)
+                    if skill:
+                        player["_selected_skill"] = skill["name"]
+                        # Recursively try again
+                        continue
+                    else:
+                        combat_text = "You don't have any usable skills!"
+                else:
+                    combat_text = "You don't have any skills!"
 
         elif action == "use item":
-            success, turn_summary = use_item(player, item_or_skill_name, items)
-            if not success:
-                print(turn_summary)
-                continue
+            if selected_item:
+                success, msg = use_item(player, selected_item, items)
+                combat_text = msg
+                if not success:
+                    combat_text = f"Failed to use {selected_item}."
+            else:
+                # Try to use first item if none selected
+                if player.get("inventory"):
+                    item_name = player["inventory"][0]
+                    player["_selected_item"] = item_name
+                    # Recursively try again
+                    continue
+                else:
+                    combat_text = "You don't have any items!"
 
         elif action == "run":
             roll = roll_d20() + stat_modifier(player["stats"]["DEX"])
             if roll >= 15:
-                turn_summary = "You successfully escape!"
-                print(turn_summary)
+                print("You successfully escape from combat!")
                 return False
             else:
-                turn_summary = "Failed to escape!"
+                combat_text = "You try to run but fail to escape!"
 
-        #! Enemy turn
-        enemy_summary = ""
-        if enemy["current_hp"] > 0 and action != "run":
-            enemy_weapon = next((i for i in items if i["name"] == enemy.get("equipped_weapon", "")), None)
-            result = combat_attack(enemy, player, weapon_item=enemy_weapon)
-            enemy_summary = f"[Enemy Turn] {enemy['name']} hits and deals {result['damage']} damage!"
+        else:
+            combat_text = f"{player['name']} hesitates, unsure what to do."
 
-        # Combine turn summary
-        combat_text = turn_summary
-        if enemy_summary:
-            combat_text += "\n" + enemy_summary
-
-        #! Ai Narration
+        #! ================= ENEMY TURNS =================
+        enemy_actions = []
+        
+        # All alive enemies get a turn
+        for i, enemy in enumerate(alive_enemies):
+            if enemy["current_hp"] <= 0:
+                continue
+                
+            action_type, action_data = enemy_choose_action(enemy, player)
+            result = execute_enemy_action(enemy, player, action_type, action_data)
+            
+            enemy_actions.append({
+                "enemy": enemy,
+                "result": result,
+                "index": i
+            })
+        
+        # Combine enemy actions into one text
+        if enemy_actions:
+            enemy_texts = []
+            for action in enemy_actions:
+                enemy = action["enemy"]
+                result = action["result"]
+                enemy_texts.append(f"{enemy['name']}: {result['message']}")
+            
+            if combat_text:
+                combat_text += "\n" + "\n".join(enemy_texts)
+            else:
+                combat_text = "\n".join(enemy_texts)
+        
+        # Check if player died
+        if player["current_hp"] <= 0:
+            combat_text += "\nYou have been knocked unconscious!"
+        
+        #! ================= AI NARRATION =================
         history = [
             system_rules,
-            {"role": "system", "content": f"Current location: {state['location']}, current quest: {state['quest']}."},
-            {"role": "system", "content": f"Character: {player['name']}, Hp: {player['current_hp']}/{player['max_hp']}, Mana: {player['mana']}, Equipped Weapon: {player['equipped_weapon']}."},
-            {"role": "user", "content": f"Turn narration:\n{combat_text}\nDescribe the scene immersively in JSON with 'narration' only, respecting the location and context."}
+            {"role": "system", "content": f"Current location: {state['location']}."},
+            {"role": "system", "content": f"Player: {player['name']} HP {player['current_hp']}/{player['max_hp']}."},
+            {"role": "system", "content": f"Alive enemies: {len(alive_enemies)}."},
+            {"role": "user", "content": f"Combat log:\n{combat_text}\nNarrate faithfully without inventing actions."}
         ]
 
         ai_output = narrate(history)
         try:
-            data = extract_json(ai_output)
-            narration = data.get("narration", combat_text)
+            narration = extract_json(ai_output).get("narration", combat_text)
         except:
             narration = combat_text
 
         print("\n" + narration)
-        combat_history.append({"role": "user", "content": narration})
+        combat_history.append(narration)
+        
+        # If player died, end combat
+        if player["current_hp"] <= 0:
+            break
+
+    #! ================= COMBAT END =================
+    if player["current_hp"] <= 0:
+        print("\nYou have been defeated...")
+        return False
+    
+    print(f"\nYou defeated all enemies!")
+    
+    # Grant XP for all defeated enemies
+    total_xp = 0
+    for enemy in enemies:
+        if enemy["current_hp"] <= 0:
+            xp_reward = enemy.get("cr", 1) * 10
+            total_xp += xp_reward
+    
+    player["xp"] = update_stat(player["xp"], total_xp)
+    print(f"You gain {total_xp} XP!")
+    
+    # Level up check
+    if player["xp"] >= player["level"] * 100:
+        player["level"] += 1
+        player["max_hp"] += 10
+        player["current_hp"] = player["max_hp"]
+        player["mana"] += 10
+        print(f"\n[LEVEL UP] You are now level {player['level']}! Max HP increased to {player['max_hp']}.")
+    
+    return True
 
 
 
 
 
-enemy = {
-    "name": "Goblin",
-    "max_hp": 20,
-    "equipped_weapon": "Short Sword",
-    "stats": {"STR": 10, "DEX": 10, "CON": 8, "INT": 5, "WIS": 5, "CHA": 5},
-    "xp": 10,
-    "gold": 5
-}
+
+# Spawn an enemy based on level budget system
+# Returns a copy of an enemy template with randomized HP
+def spawn_enemy(location_type="wilderness", player_level=1):
+    # Get all enemies at or below player level
+    all_enemies = ENEMIES_DB.copy()
+    
+    if not all_enemies:
+        print("[ERROR] No enemies loaded from enemies.json")
+        return []
+    
+    # Decide: multiple weak enemies or single stronger enemy?
+    choice = random.random()
+    
+    if choice < 0.5 and player_level >= 2:
+        # Spawn multiple weak enemies (e.g., 2 level 1 goblins)
+        num_enemies = random.randint(2, min(3, player_level))
+        weak_enemies = [e for e in all_enemies if e["level"] == 1]
+        
+        if not weak_enemies:
+            weak_enemies = [e for e in all_enemies if e["level"] <= player_level]
+        
+        spawned_enemies = []
+        for _ in range(num_enemies):
+            enemy_template = random.choice(weak_enemies)
+            enemy = enemy_template.copy()
+            
+            # Randomize HP - handle both old and new JSON formats
+            if "max_hp" in enemy:
+                if isinstance(enemy["max_hp"], dict):
+                    # New format: {"min": X, "max": Y}
+                    min_hp = enemy["max_hp"]["min"]
+                    max_hp = enemy["max_hp"]["max"]
+                    enemy["current_hp"] = random.randint(min_hp, max_hp)
+                    enemy["max_hp"] = enemy["current_hp"]
+                else:
+                    # Old format: just a number
+                    enemy["current_hp"] = enemy["max_hp"]
+            
+            spawned_enemies.append(enemy)
+        
+        return spawned_enemies
+    else:
+        # Spawn single enemy at player's level or slightly below
+        max_enemy_level = min(player_level, 10)
+        possible_enemies = [e for e in all_enemies if e["level"] <= max_enemy_level]
+        
+        if not possible_enemies:
+            possible_enemies = [e for e in all_enemies if e["level"] == 1]
+        
+        enemy_template = random.choice(possible_enemies)
+        enemy = enemy_template.copy()
+        
+        # Randomize HP - handle both old and new JSON formats
+        if "max_hp" in enemy:
+            if isinstance(enemy["max_hp"], dict):
+                # New format: {"min": X, "max": Y}
+                min_hp = enemy["max_hp"]["min"]
+                max_hp = enemy["max_hp"]["max"]
+                enemy["current_hp"] = random.randint(min_hp, max_hp)
+                enemy["max_hp"] = enemy["current_hp"]
+            else:
+                # Old format: just a number
+                enemy["current_hp"] = enemy["max_hp"]
+        
+        return [enemy]  # Return as list for consistency
+
+# Simple AI for enemy to choose an action
+# Returns: ("attack", attack_index) or ("skill", skill_name) or ("item", item_name)
+def enemy_choose_action(enemy, player):
+    if "attacks" not in enemy or not enemy["attacks"]:
+        return ("attack", 0)  # Fallback
+    
+    available_attacks = enemy["attacks"]
+    
+    # Simple random selection from all available attacks
+    attack_index = random.randint(0, len(available_attacks) - 1)
+    return ("attack", attack_index)
+
+
+#Execute the chosen enemy action
+def execute_enemy_action(enemy, player, action_type, action_data):
+    if action_type == "attack":
+        attack_index = action_data
+        if attack_index < len(enemy.get("attacks", [])):
+            attack = enemy["attacks"][attack_index]
+            
+            # Prepare attack data structure
+            attack_data = {
+                "type": "attack",
+                "effects": attack["effects"]
+            }
+            
+            # Get weapon type from attack's subType field
+            weapon_item = {"subType": attack.get("subType", "melee")}
+            
+            # Use the proper hit_check function
+            hits = hit_check(enemy, player, skill=attack_data, weapon_item=weapon_item)
+            
+            if hits:
+                # Calculate damage using the proper dice roll
+                damage_result = roll_dice(attack["effects"][0]["value"])
+                if isinstance(damage_result, tuple):
+                    damage = damage_result[0]
+                    rolls = damage_result[1]
+                else:
+                    damage = damage_result
+                    rolls = []
+                
+                # Apply appropriate stat scaling for damage
+                if weapon_item["subType"] == "ranged":
+                    stat_bonus = stat_modifier(enemy["stats"]["DEX"])
+                else:
+                    stat_bonus = stat_modifier(enemy["stats"]["STR"])
+                
+                total_damage = max(0, damage + stat_bonus)
+                
+                # Apply damage to player
+                player["current_hp"] = update_stat(player["current_hp"], -total_damage, 0, player["max_hp"])
+                
+                # Get the roll details for narration
+                rolls_text = f" Rolls: {rolls}" if rolls else ""
+                stat_text = f" (+{stat_bonus} from stats)" if stat_bonus > 0 else f" ({stat_bonus} from stats)" if stat_bonus < 0 else ""
+                
+                return {
+                    "success": True,
+                    "damage": total_damage,
+                    "attack_name": attack["name"],
+                    "rolls": rolls,
+                    "stat_bonus": stat_bonus,
+                    "message": f"The {enemy['name']} uses {attack['name']} for {total_damage} damage!{stat_text}{rolls_text}"
+                }
+            else:
+                # Miss
+                return {
+                    "success": False,
+                    "damage": 0,
+                    "attack_name": attack["name"],
+                    "message": f"The {enemy['name']} uses {attack['name']} but misses!"
+                }
+
+    # Fallback
+    return {
+        "success": False,
+        "damage": 0,
+        "message": f"The {enemy['name']} hesitates..."
+    }
+
 
 
 
@@ -822,6 +1209,7 @@ def main():
     global turn_count
     global recent_history
     global mana_regen_per_turn
+    global character
     print("=== ADA TI DA' IL BENVENUTO ===")
     print("\nDescribe your character in your own words (free text):")
     user_desc = input("> ")
@@ -845,6 +1233,10 @@ def main():
         combat_mode = "manual"
 
     print(f"\n[INFO] Combat mode set to: {combat_mode}")
+
+    # Combat encounter chance variables
+    last_combat_turn = 0
+    combat_cooldown = 30  # Minimum turns between combats
 
     while True:
         user_input = input("\n What do you do? (type 'quit' to quit) \n> ")
@@ -872,38 +1264,57 @@ def main():
             recent_history.append({"role": "assistant", "content": data["narration"]})
             turn_count += 1
 
-            # check if theres a combat
-            if data.get("encounter"):
-                print("\n[ALERT] Combat has started!")
+            #! ================= RANDOM ENCOUNTER LOGIC =================
+            if (turn_count - last_combat_turn > combat_cooldown and 
+                random.random() < 0.2 and  # 20% chance per turn
+                state["location"].lower() not in ["tavern", "town", "city", "shop", "taverna iniziale", "inn"]):
                 
-                # Qui puoi definire un nemico base oppure usare i dati passati dalla narrazione
-                enemy = {
-                    "name": "Goblin",
-                    "max_hp": 20,
-                    "current_hp": 20,
-                    "equipped_weapon": "Short Sword",
-                    "stats": {"STR": 10, "DEX": 10, "CON": 8, "INT": 5, "WIS": 5, "CHA": 5},
-                    "xp": 10,
-                    "gold": 5
-                }
-
-                combat_loop(character, enemy, ITEMS_DB, state)
-                continue  # After the combat return to the main loop
+                print("\n[ALERT] You are ambushed by enemies!")
+                enemies = spawn_enemy(state["location"].lower(), character["level"])
+                victory = combat_loop(character, enemies, ITEMS_DB, state, mode=combat_mode)
+                
+                if victory:
+                    last_combat_turn = turn_count
+                    print("\n[SYSTEM] After the battle, you continue your journey...")
+                    # Give the player a moment before continuing
+                    input("Press Enter to continue...")
+                else:
+                    print("\nGame Over!")
+                    break
             
+            #! ================= FORCED ENCOUNTER FROM AI =================
+            elif data.get("encounter"):
+                print("\n[ALERT] Combat has started!")
+                enemies = spawn_enemy(state["location"].lower(), character["level"])
+                
+                if not enemies:
+                    print("[ERROR] No enemies could be spawned. Continuing adventure...")
+                    continue  # Skip combat if no enemies
+                
+                victory = combat_loop(character, enemies, ITEMS_DB, state, mode=combat_mode)
+                
+                if victory:
+                    last_combat_turn = turn_count
+                    print("\n[SYSTEM] After the battle, you continue your journey...")
+                    input("Press Enter to continue...")
+                else:
+                    print("\nGame Over! \nIt was indeed dangerous to go alone, Zelda...")
+                    break
+            
+            #! ================= NORMAL TURN PROCESSING =================
             # Add/remove items from inventory
             for item in data.get("found_items", []):
                 if item not in character["inventory"]:
                     character["inventory"].append(item)
 
-            for item in data["lost_items"]:
+            for item in data.get("lost_items", []):
                 if item in character["inventory"]:
                     character["inventory"].remove(item)
 
-            # Update stats                                                                      V <- default value, if the Ai forgets to include gold_change 
-            character["max_hp"] = update_stat(character["max_hp"],    data.get("max_hp_change", 0), 0, 100)
-            character["gold"]   = update_stat(character["gold"],      data.get("gold_change",   0))
-            character["xp"]     = update_stat(character["xp"],        data.get("xp_gained",     0))
-
+            # Update stats
+            character["max_hp"] = update_stat(character["max_hp"], data.get("max_hp_change", 0), 0, 100)
+            character["gold"] = update_stat(character["gold"], data.get("gold_change", 0))
+            character["xp"] = update_stat(character["xp"], data.get("xp_gained", 0))
 
             # Reduce mana if AI specifies a mana cost
             if "mana_change" in data:
@@ -912,43 +1323,44 @@ def main():
                 # Passive mana regen every 5 turns
                 character["mana"] = update_stat(character["mana"], mana_regen_per_turn, 0)
 
-
             # Update the location and current quest
             if "location" in data:
                 state["location"] = data["location"]
             if "quest" in data:
                 state["quest"] = data["quest"]
 
-            # # Track encountered NPCs --> talk to other members of the group about this feature
-            #This shoud be taken from the database in a real implementation 
-            # (the named npc are remembered in the databse with their starting location and other info)
-            # if "encounter_npc" in data:
-            #     npc_name = data["encounter_npc"]
-            #     if npc_name not in encountered_npcs:
-            #         encountered_npcs.add(npc_name)
-            #         print(f"[SYSTEM] You have encountered a new NPC: {npc_name}")
-
             # Print status for debugging
-            print("-" * 30)
-            print(f"[Location: {state['location'].upper()}] | Quest: {state['quest'].lower()} | max_hp: {character['max_hp']} | Mana: {character['mana']} | Gold: {character['gold']}")
-            print("-" * 30)
+            print("-" * 40)
+            print(f"[Location: {state['location'].upper()}]")
+            print(f"[Quest: {state['quest']}]")
+            print(f"[Level: {character['level']} | XP: {character['xp']}/{(character['level'] + 1) * 100}]")
+            print(f"[HP: {character['current_hp']}/{character['max_hp']} | Mana: {character['mana']} | Gold: {character['gold']}]")
+            print("-" * 40)
 
             # Print the narration
-            print(data["narration"])
+            print(f"\n{data['narration']}")
 
             # Every 10 messages (5 turns), summarise and update long-term memory
             if turn_count > 0 and turn_count % 10 == 0:
                 print("\n[SYSTEM] Ada is sorting through her memories...")
                 long_term_memory = summarise_memory(long_term_memory, recent_history)
-            
-            #! FORCE Try the combat function here
-            # combat_loop(character, enemy, ITEMS_DB)
+                print(f"[Memory Updated]: {long_term_memory[:100]}...")
 
         except Exception as e:
-            print(f"\n[NARRATOR ERROR] The master in confused: {e}")
+            print(f"\n[NARRATOR ERROR] The master is confused: {e}")
             print(f"Raw response: {output}")
-
-        
 
 if __name__ == "__main__":
     main()
+
+
+
+
+# # Track encountered NPCs --> talk to other members of the group about this feature
+#This shoud be taken from the database in a real implementation 
+# (the named npc are remembered in the databse with their starting location and other info)
+# if "encounter_npc" in data:
+#     npc_name = data["encounter_npc"]
+#     if npc_name not in encountered_npcs:
+#         encountered_npcs.add(npc_name)
+#         print(f"[SYSTEM] You have encountered a new NPC: {npc_name}")

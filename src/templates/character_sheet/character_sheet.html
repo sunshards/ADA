@@ -8,6 +8,7 @@
     <script>
         // url inserted by the jinja render_template() 
         const uploadUrl = "{{ url_for('creation.upload') }}";
+        character = {{ character|tojson }}
     </script>
     <script type="text/javascript" src="{{ url_for('static', filename='character_sheet/character_sheet.js') }}"></script>
 {% endblock %}
@@ -59,72 +60,87 @@
 
         <!-- Details Row -->
 
-        <dl class="row">
-            <dt class="col-sm-3">
-                Race
-            </dt>
-            <dd class="col-sm-9">
-                {{character["race"]}}
-            </dd>
+        <dl class="d-flex flex-wrap gap-5 align-items-stretch">
+            <div class="flex-row export">
+                <dt class="col-sm-3 export-key">
+                    Race
+                </dt>
+                <dd class="col-sm-9 export-value">
+                    {{character["race"]}}
+                </dd>
+            </div>
             
-            <dt class="col-sm-3">
-                Class
-            </dt>
-            <dd class="col-sm-9">
-                {{character["class"]}}
-            </dd>
+            <div class="export">
+                <dt class="col-sm-3 export-key">
+                    Class
+                </dt>
+                <dd class="col-sm-3 export-value">
+                    {{character["class"]}}
+                </dd>
+            </div>
 
-            <dt class="col-sm-3">
+            <div class="export">
+            <dt class="col-sm-3 export-key">
                 Maximum Healthpoints
             </dt>
-            <dd class="col-sm-9">
+            <dd class="col-sm-3 export-value">
                 {{character["max_hp"]}}
             </dd>
+            </div>
             
-            <dt class="col-sm-3">
-                Maximum Mana
-            </dt>
-            <dd class="col-sm-9">
-                {{character["mana"]}}
-            </dd>
+            <div class="export">
+                <dt class="col-sm-3 export-key">
+                    Maximum Mana
+                </dt>
+                <dd class="col-sm-3 export-value">
+                    {{character["mana"]}}
+                </dd>
+            </div>
+            
+            <div class="export">
+                <dt class="col-sm-3 export-key">
+                    Level
+                </dt>
+                <dd class="col-sm-3 export-value">
+                    {{character["level"]}}
+                </dd>
+            </div>
 
-            
-            <dt class="col-sm-3">
-                Level
-            </dt>
-            <dd class="col-sm-9">
-                {{character["level"]}}
-            </dd>
-            
-            <dt class="col-sm-3">
-                Gold
-            </dt>
-            <dd class="col-sm-9">
-                {{character["gold"]}}
-            </dd>
-            
-            <dt class="col-sm-3">
-                XP
-            </dt>
-            <dd class="col-sm-9">
-                {{character["xp"]}}
-            </dd>
+            <div class="export">
+                <dt class="col-sm-3 export-key">
+                    Gold
+                </dt>
+                <dd class="col-sm-3 export-value">
+                    {{character["gold"]}}
+                </dd>
+            </div>
 
+            <div class="export">
+                <dt class="col-sm-3 export-key">
+                    XP
+                </dt>
+                <dd class="col-sm-3 export-value">
+                    {{character["xp"]}}
+                </dd>
+            </div>
 
-            
-            <dt class="col-sm-3">
+            <div class="export">
+            <dt class="col-sm-3 export-key">
                 Alignment
             </dt>
-            <dd class="col-sm-9">
+            <dd class="col-sm-3 export-value">
                 {{character["alignment_righteousness"]}} {{character["alignment_morality"]}}
             </dd>
-            
-            <dt class="col-sm-3">
+            </div>
+
+            <div class="export">
+            <dt class="col-sm-3 export-key">
                 Birthplace
             </dt>
-            <dd class="col-sm-9">
+            <dd class="col-sm-3 export-value">
                 {{character["birthplace"]}}
             </dd>
+            </div>
         </dl>
 
         <!-- Stats Row -->
@@ -179,13 +195,17 @@
             </div>
          </div>
 
+         <div class="row my-3 d-flex justify-content-center">
+            <div class="col-md-6 d-flex justify-content-center">
+                <button 
+                class="btn btn-primary"
+                id="character-submit"
+                >
+                    Submit character
+                </button>
+            </div>
+         </div>
     </div>
-    
-    <script>
-        // Cambia la descrizione nella text area
-        const desc = {{ character["description"] | tojson }};
-        $('#descriptionTextArea').val(desc);
-    </script>
 
 
 {% endblock %}

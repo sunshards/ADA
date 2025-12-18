@@ -13,30 +13,53 @@
     <nav class="navbar navbar-expand bg-body-tertiary">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">ADA</a>
-            <ul class="navbar-nav ms-auto mb-2 mb-lg-0 gap-2">
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0 gap-2 align-items-center">
                 <li class="nav-item">
                     <a class="nav-link" href="#">Informazioni</a>
                 </li>
-                <li class="nav-item">
-                    <a class="btn btn-primary" href="{{ url_for('auth.login') }}">
-                        Accedi
-                    </a>
-                </li>
+
+                {# --- TEST LOGIN LOGIC HERE --- #}
+                {% if g.user %}
+                    <li class="nav-item">
+                        <span class="navbar-text me-2">
+                            Ciao, <strong>{{ g.user.Username }}</strong>!
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-outline-danger btn-sm" href="{{ url_for('auth.logout') }}">
+                            Esci
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="btn btn-primary" href="{{ url_for('auth.login') }}">
+                            Accedi
+                        </a>
+                    </li>
+                {% endif %}
+                {# ---------------------------- #}
             </ul>
-            </div>
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container mt-5">
         <div class="row">
+            {# Show a personalized message if logged in #}
+            <div class="text-center mb-4">
+                <h2>
+                    {% if g.user %}
+                        Ada ti da il bentornato, {{ g.user.Username }}.
+                    {% else %}
+                        Ada ti da il benvenuto.
+                    {% endif %}
+                </h2>
+            </div>
+
             <form 
-            class="parent d-flex flex-column h-100 justify-content-center align-content-center "
-            method="POST"
-            action="{{ url_for('creation.creation')}}"
+                class="parent d-flex flex-column h-100 justify-content-center align-content-center"
+                method="POST"
+                action="{{ url_for('creation.creation')}}"
             >
-                <label for="mainTextArea" class="form-label ">
-                    <h2>Benvenuto.</h2>
-                </label>
                 <textarea type="text" 
                     class="form-control-lg mb-2" 
                     id="mainTextArea" 
@@ -46,7 +69,7 @@
                 ></textarea>
                 <input 
                     type="submit" 
-                    value="Done" 
+                    value="Inizia Creazione" 
                     class="btn btn-primary"
                 >
             </form>
@@ -54,7 +77,3 @@
     </div>
 
 {% endblock %}
-
-
-
-

@@ -1,55 +1,284 @@
-    {
-  "_id": "goblin",
-  "name": "Goblin",
-  "description": "A small, aggressive humanoid creature that attacks in packs.",
-  "type": "humanoid",
-
-  "level": 1,
-  "cr": 1,
-
-  "max_hp": {
-    "min": 7,
-    "max": 12
-  },
-
-  "stats": {
-    "str": 8,
-    "dex": 14,
-    "con": 10,
-    "int": 8,
-    "wis": 8,
-    "cha": 6
-  },
-
-  "ac": 13,
-
-  "attacks": [
-    {
-      "name": "Scimitar Slash",
-      "description": "A quick slash with a rusty blade.",
-      "effects": [
-        {
-          "kind": "damage",
-          "target": "enemy",
-          "element": "physical",
-          "value": "1d6+1"
-        }
-      ]
+[
+  {
+    "_id": "goblin",
+    "name": "Goblin",
+    "description": "A small, aggressive humanoid creature that attacks in packs.",
+    "type": "humanoid",
+    "level": 1,
+    "cr": 1,
+    "max_hp": {
+      "min": 7,
+      "max": 12
     },
-    {
-      "name": "Shortbow Shot",
-      "description": "A poorly aimed arrow fired from a shortbow.",
-      "effects": [
-        {
-          "kind": "damage",
-          "target": "enemy",
-          "element": "physical",
-          "value": "1d6+0"
-        }
-      ]
-    }
-  ],
+    "stats": {
+      "STR": 8,
+      "DEX": 14,
+      "CON": 10,
+      "INT": 8,
+      "WIS": 8,
+      "CHA": 6
+    },
+    "ac": 13,
+    "attacks": [
+      {
+        "name": "Scimitar Slash",
+        "description": "A quick slash with a rusty blade.",
+        "index": 1,
+        "subType": "melee",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "1d6+1"
+          }
+        ]
+      },
+      {
+        "name": "Shortbow Shot",
+        "description": "A poorly aimed arrow fired from a shortbow.",
+        "index": 2,
+        "subType": "ranged",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "1d6+0"
+          }
+        ]
+      }
+    ],
+    "resistances": [],
+    "immunities": []
+  },
 
-  "resistances": [],
-  "immunities": []
+  {
+    "_id": "orc",
+    "name": "Orc",
+    "description": "A brutish humanoid warrior known for its strength and ferocity.",
+    "type": "humanoid",
+    "level": 2,
+    "cr": 2,
+    "max_hp": {
+      "min": 15,
+      "max": 25
+    },
+    "stats": {
+      "STR": 16,
+      "DEX": 10,
+      "CON": 14,
+      "INT": 6,
+      "WIS": 8,
+      "CHA": 4
+    },
+    "ac": 13,
+    "attacks": [
+      {
+        "name": "Greataxe Swing",
+        "description": "A powerful swing with a massive greataxe.",
+        "index": 1,
+        "subType": "melee",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "1d12+3"
+          }
+        ]
+      },
+      {
+        "name": "Javelin Throw",
+        "description": "Throws a javelin with brute force.",
+        "index": 2,
+        "subType": "ranged",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "1d6+3"
+          }
+        ]
+      }
+    ],
+    "resistances": [],
+    "immunities": []
+  },
+  {
+    "_id": "kobold",
+    "name": "Kobold",
+    "description": "A small, reptilian humanoid that uses traps and ambushes.",
+    "type": "humanoid",
+    "level": 1,
+    "cr": 1,
+    "max_hp": {
+      "min": 5,
+      "max": 10
+    },
+    "stats": {
+      "STR": 7,
+      "DEX": 15,
+      "CON": 9,
+      "INT": 8,
+      "WIS": 7,
+      "CHA": 8
+    },
+    "ac": 12,
+    "attacks": [
+      {
+        "name": "Dagger Stab",
+        "description": "A quick stab with a rusty dagger.",
+        "index": 1,
+        "subType": "melee",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "1d4+1"
+          }
+        ]
+      },
+      {
+        "name": "Sling Stone",
+        "description": "Fires a stone from a sling.",
+        "index": 2,
+        "subType": "ranged",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "1d4+1"
+          }
+        ]
+      }
+    ],
+    "resistances": [],
+    "immunities": []
+  },
+  {
+    "_id": "human_thief",
+    "name": "Human Thief",
+    "description": "A nimble human rogue who relies on stealth and cunning.",
+    "type": "humanoid",
+    "level": 1,
+    "cr": 1,
+    "max_hp": {
+      "min": 8,
+      "max": 14
+    },
+    "stats": {
+      "STR": 10,
+      "DEX": 16,
+      "CON": 12,
+      "INT": 12,
+      "WIS": 10,
+      "CHA": 13
+    },
+    "ac": 14,
+    "attacks": [
+      {
+        "name": "Short Sword Stab",
+        "description": "A quick stab with a short sword, aiming for vital points.",
+        "index": 1,
+        "subType": "melee",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "1d6+3"
+          }
+        ]
+      },
+      {
+        "name": "Throwing Knife",
+        "description": "Throws a knife at a target from a distance.",
+        "index": 2,
+        "subType": "ranged",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "1d4+2"
+          }
+        ]
+      }
+    ],
+    "resistances": [],
+    "immunities": []
+},
+{
+    "_id": "red_dragon",
+    "name": "Red Dragon",
+    "description": "A massive, fire-breathing dragon with razor-sharp claws and a deadly tail.",
+    "type": "dragon",
+    "level": 10,
+    "cr": 10,
+    "max_hp": {
+      "min": 200,
+      "max": 250
+    },
+    "stats": {
+      "STR": 23,
+      "DEX": 10,
+      "CON": 21,
+      "INT": 16,
+      "WIS": 13,
+      "CHA": 19
+    },
+    "ac": 19,
+    "attacks": [
+      {
+        "name": "Claw Swipe",
+        "description": "A powerful swipe with massive claws.",
+        "index": 1,
+        "subType": "melee",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "2d10+6"
+          }
+        ]
+      },
+      {
+        "name": "Fire Breath",
+        "description": "Exhales a cone of fire, scorching everything in its path.",
+        "index": 2,
+        "subType": "ranged",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "fire",
+            "value": "10d6"
+          }
+        ]
+      },
+      {
+        "name": "Tail Strike",
+        "description": "Sweeps its heavy tail in a wide arc, crushing enemies.",
+        "index": 3,
+        "subType": "melee",
+        "effects": [
+          {
+            "kind": "damage",
+            "target": "enemy",
+            "element": "physical",
+            "value": "2d8+4"
+          }
+        ]
+      }
+    ],
+    "resistances": ["fire"],
+    "immunities": []
 }
+
+]
+
