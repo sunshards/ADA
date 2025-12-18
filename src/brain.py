@@ -141,6 +141,52 @@ def extract_json(text):
     return json.loads(match.group())
 
 
+def narrate_strict(history, retries=2):
+    history = [system_rules] + history
+
+    for _ in range(retries):
+        output = narrate(history)
+        try:
+            return extract_json(output)
+        except:
+            # Ask the model to repair JSON
+            repair = narrate([
+                {
+                    "role": "system",
+                    "content": "Fix the following text into valid JSON ONLY. Do not add any text."
+                },
+                {"role": "user", "content": output}
+            ])
+            try:
+                return extract_json(repair)
+            except:
+                continue
+
+    # Hard fallback (never crash the game)
+    return {
+        "narration": output,
+        "found_items": [],
+        "lost_items": [],
+        "location": None,
+        "quest": None,
+        "max_hp_change": 0,
+        "xp_gained": 0,
+        "gold_change": 0,
+        "encounter": False
+    }
+
+
+def narrate_flavor(prompt, max_tokens=300):
+    response = narrate([
+        {
+            "role": "system",
+            "content": "You are a cinematic fantasy narrator. No JSON. No rules."
+        },
+        {"role": "user", "content": prompt}
+    ])
+    return response
+
+
 
 
 # Inspiration: Claude playing Pokémon (too complicated to implement here)
@@ -159,12 +205,11 @@ def summarise_memory(long_memory, recent_history):
 
     # Call the model to get the summary
     summary = narrate(messages)
+    summary = narrate_flavor(
+        f"Current memory:\n{long_memory}\n\nRecent events:\n{recent_history}\n\nUpdate memory with new facts."
+    )
+    return summary[:1000] # Limit summary length
 
-    try:
-        data = extract_json(summary)
-        return data.get("narration", summary)
-    except:
-        return summary
 
 
 # Utility function to update stats with bounds
@@ -450,31 +495,34 @@ def stat_scaling(skill_type, stats):
 #magic always hit, but the physical can miss based on DEX/STR stat (bows use a dex check, melee weapons use a str check)
 # roll d20 + stat scaling vs 10 + enemy DEX check
 def hit_check(attacker: dict, defender: dict, skill: dict = None, weapon_item: dict = None) -> bool:
-    # Magic always hits
+    # Magic / buff / debuff always hit
     if skill and skill["type"] in ("magic", "buff", "debuff"):
-        if skill.get("effects") and any("mana_cost" in e for e in skill["effects"]):
-                    mana_cost = sum(e.get("mana_cost", 0) for e in skill["effects"])
-                    if attacker["mana"] < mana_cost:
-                        return False  # Not enough mana
-                    attacker["mana"] = update_stat(attacker["mana"], -mana_cost, 0)
+        cast_via_wand = skill.get("_cast_via_wand", False)
+
+        if not cast_via_wand:
+            mana_cost = sum(e.get("mana_cost", 0) for e in skill.get("effects", []))
+            if attacker["mana"] < mana_cost:
+                return False
+            attacker["mana"] = update_stat(attacker["mana"], -mana_cost, 0)
+
         return True
 
-    # Determine weapon type
+    # Physical attacks
     if weapon_item is None:
-        # Fallback: find in inventory by name
-        return False  # No weapon data, assume miss
+        return False
 
     sub_type = weapon_item.get("subType", "melee")
+
     if sub_type == "ranged":
         attack_stat = attacker["stats"]["DEX"]
-    elif sub_type == "melee":
-        attack_stat = attacker["stats"]["STR"]
     else:
         attack_stat = attacker["stats"]["STR"]
 
     attack_roll = roll_d20() + stat_modifier(attack_stat)
     defense_roll = 10 + stat_modifier(defender["stats"]["DEX"])
+
     return attack_roll >= defense_roll
+
 
 
 def skill_damage(skill, character):
@@ -555,31 +603,44 @@ def determine_initiative(player: dict, enemy: dict):
 
 # Perform an attack (weapon or skill) and return combat result.
 def combat_attack(attacker, defender, skill=None, weapon_item=None):
-    result_data = {"result": "miss", "damage": 0, "defender_hp": defender.get("current_hp", 0), "skill_rolls": [], "weapon_rolls": []}
-    
+    result_data = {
+        "result": "miss",
+        "damage": 0,
+        "defender_hp": defender.get("current_hp", 0),
+        "skill_rolls": [],
+        "weapon_rolls": []
+    }
+
     if not hit_check(attacker, defender, skill, weapon_item):
         return result_data
 
     total_damage = 0
 
-    # Skill
+    # Skill damage
     if skill:
         dmg = skill_damage(skill, attacker)
         total_damage += dmg["total"]
         result_data["skill_rolls"] = dmg["rolls"]
 
-    # Weapon
+    # Weapon damage
     if weapon_item and (skill is None or skill["type"] == "attack"):
         dmg = weapon_base_damage(weapon_item)
         total_damage += dmg["total"]
         result_data["weapon_rolls"] = dmg["rolls"]
 
-    defender["current_hp"] = update_stat(defender.get("current_hp", 0), -total_damage, 0, defender["max_hp"])
+    defender["current_hp"] = update_stat(
+        defender.get("current_hp", 0),
+        -total_damage,
+        0,
+        defender["max_hp"]
+    )
+
     result_data["damage"] = total_damage
     result_data["defender_hp"] = defender["current_hp"]
     result_data["result"] = "hit"
 
     return result_data
+
 
 
 
@@ -868,55 +929,48 @@ def combat_loop(player, enemies, items, state, mode="manual", similarity_thresho
                     current_enemy_index = len(alive_enemies) - 1
 
         elif action == "use skill":
-            # Use the skill selected by the AI parser
-            if selected_skill:
-                skill = get_skill_by_name(selected_skill, SKILLS_DB)
-                if skill:
-                    # Check if player has enough mana
-                    mana_cost = 0
-                    if skill.get("effects"):
-                        for effect in skill["effects"]:
-                            mana_cost += effect.get("mana_cost", 0)
-                    
-                    if mana_cost > 0 and player.get("mana", 0) < mana_cost:
-                        combat_text = f"You try to cast {skill['name']} but don't have enough mana! (Need: {mana_cost}, Have: {player.get('mana', 0)})"
-                    else:
-                        # For magic skills, create dummy weapon item
-                        weapon_item = None
-                        if skill["type"] in ("magic", "buff", "debuff"):
-                            weapon_item = {"subType": "melee"}
-                        
-                        result = combat_attack(player, current_enemy, skill=skill, weapon_item=weapon_item)
-                        rolls = result["skill_rolls"] or []
-                        
-                        combat_text = f"You cast {skill['name']} on {current_enemy['name']} for {result['damage']} damage."
-                        if rolls:
-                            combat_text += f" Rolls: {rolls}"
-                        
-                        if mana_cost > 0:
-                            combat_text += f" (Mana cost: {mana_cost})"
-                        
-                        # Check if enemy died
-                        if current_enemy["current_hp"] <= 0:
-                            combat_text += f"\n{current_enemy['name']} has been defeated!"
-                            alive_enemies.pop(current_enemy_index)
-                            if current_enemy_index >= len(alive_enemies) and alive_enemies:
-                                current_enemy_index = len(alive_enemies) - 1
-                else:
-                    combat_text = f"Skill '{selected_skill}' not found!"
+            if not selected_skill:
+                combat_text = "You don't know which spell to cast."
             else:
-                # Try to use first skill if none selected
-                if player.get("skills"):
-                    skill_name = player["skills"][0]
-                    skill = get_skill_by_name(skill_name, SKILLS_DB)
-                    if skill:
-                        player["_selected_skill"] = skill["name"]
-                        # Recursively try again
-                        continue
-                    else:
-                        combat_text = "You don't have any usable skills!"
+                skill = get_skill_by_name(selected_skill, SKILLS_DB)
+                if not skill:
+                    combat_text = f"Skill '{selected_skill}' not found!"
                 else:
-                    combat_text = "You don't have any skills!"
+                    weapon_item = get_item_by_name(player["equipped_weapon"], items)
+
+                    # Wand-based casting (no mana, consumes usages)
+                    if (
+                        weapon_item
+                        and weapon_item.get("subType") == "wand"
+                        and weapon_item.get("usages", 0) > 0
+                    ):
+                        skill["_cast_via_wand"] = True
+                        weapon_item["usages"] -= 1
+                        weapon_item["usages"] = max(0, weapon_item["usages"])
+                        combat_text = (
+                            f"You channel {skill['name']} through your wand.\n"
+                            f"The wand glows faintly ({weapon_item['usages']} usages left)."
+                        )
+                    else:
+                        skill["_cast_via_wand"] = False
+                        combat_text = f"You cast {skill['name']}."
+
+                    result = combat_attack(player, current_enemy, skill=skill)
+                    rolls = result["skill_rolls"] or []
+
+                    combat_text += f"\n{current_enemy['name']} takes {result['damage']} damage."
+                    if rolls:
+                        combat_text += f" Rolls: {rolls}"
+
+                    # Cleanup flag (IMPORTANT)
+                    skill.pop("_cast_via_wand", None)
+
+                    # Enemy death check
+                    if current_enemy["current_hp"] <= 0:
+                        combat_text += f"\n{current_enemy['name']} has been defeated!"
+                        alive_enemies.pop(current_enemy_index)
+                        if current_enemy_index >= len(alive_enemies) and alive_enemies:
+                            current_enemy_index = len(alive_enemies) - 1
 
         elif action == "use item":
             if selected_item:
@@ -980,19 +1034,14 @@ def combat_loop(player, enemies, items, state, mode="manual", similarity_thresho
             combat_text += "\nYou have been knocked unconscious!"
         
         #! ================= AI NARRATION =================
-        history = [
-            system_rules,
-            {"role": "system", "content": f"Current location: {state['location']}."},
-            {"role": "system", "content": f"Player: {player['name']} HP {player['current_hp']}/{player['max_hp']}."},
-            {"role": "system", "content": f"Alive enemies: {len(alive_enemies)}."},
-            {"role": "user", "content": f"Combat log:\n{combat_text}\nNarrate faithfully without inventing actions."}
-        ]
+        narration = narrate_flavor(
+            f"""
+        Player HP: {player['current_hp']}/{player['max_hp']}
+        Enemies alive: {len(alive_enemies)}
 
-        ai_output = narrate(history)
-        try:
-            narration = extract_json(ai_output).get("narration", combat_text)
-        except:
-            narration = combat_text
+        {combat_text}
+        """
+        )
 
         print("\n" + narration)
         combat_history.append(narration)
@@ -1257,10 +1306,9 @@ def main():
             {"role": "system", "content": f"The character's alignment is {character['alignment_righteousness']} {character['alignment_morality']}."}
         ] + recent_history[-10:]  # last 10 messages (5 ai + 5 user = 5 completed turns) for context
 
-        output = narrate(history)
-
         try:
-            data = extract_json(output)
+            data = narrate_strict(history)
+
             recent_history.append({"role": "assistant", "content": data["narration"]})
             turn_count += 1
 
@@ -1329,12 +1377,25 @@ def main():
             if "quest" in data:
                 state["quest"] = data["quest"]
 
+
+            equipped_weapon = character.get("equipped_weapon")
+            weapon_item = get_item_by_name(equipped_weapon, ITEMS_DB)
+
+            if weapon_item:
+                if weapon_item.get("subType") == "wand":
+                    weapon_status = f"{weapon_item['name']} (usages: {weapon_item.get('usages', 0)})"
+                else:
+                    weapon_status = weapon_item["name"]
+            else:
+                weapon_status = "None"
+
             # Print status for debugging
             print("-" * 40)
             print(f"[Location: {state['location'].upper()}]")
             print(f"[Quest: {state['quest']}]")
             print(f"[Level: {character['level']} | XP: {character['xp']}/{(character['level'] + 1) * 100}]")
             print(f"[HP: {character['current_hp']}/{character['max_hp']} | Mana: {character['mana']} | Gold: {character['gold']}]")
+            print(f"[Equipped Weapon: {weapon_status}]")
             print("-" * 40)
 
             # Print the narration
