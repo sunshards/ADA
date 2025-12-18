@@ -14,6 +14,7 @@ def create_app(test_config=None):
     app = Flask(__name__)
 
     app.config.update(
+        # MAX_CONTENT_LENGTH = 12 * 1024 * 1024 # Hard limit 5MB
         TESTING=True,
         EXPLAIN_TEMPLATE_LOADING=False,
         SECRET_KEY = 'dev'
