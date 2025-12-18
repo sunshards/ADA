@@ -5,67 +5,56 @@ from flask import Flask
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from bson.objectid import ObjectId
+# Import both functions for the test
+from src.brain import load_character, save_character 
 
 # Import the new monolith functions
 from src.brain import load_character, save_monolith_to_db, resume_adventure 
 
-load_dotenv()
+target_id = "6943f1e9b2b9aad9d81bb75f"
 
-def test_monolith_flow():
-    # 1. Setup the Flask app shell
+def setup_test_app():
+    """Helper to setup the Flask app context and DB connection."""
     app = Flask(__name__)
     connection_string = os.getenv("CONNECTION_STRING")
     client = MongoClient(connection_string)
     app.db = client["ADADatabase"] 
+    return app
+
+def test_load_and_save():
+    app = setup_test_app()
 
     with app.app_context():
-        target_id = "6943f1e9b2b9aad9d81bb75f"
-        
-        print(f"--- 1. Testing INITIAL LOAD ---")
+        print(f"--- Testing LOAD for ID: {target_id} ---")
         character = load_character(target_id)
         
         if not character:
-            print("[FAILURE] Could not find base character. Aborting test.")
+            print("[FAIL] Character not found. Cannot proceed with save test.")
             return
 
-        # 2. Create a Mock Monolith
-        # This simulates the state during active gameplay
-        monolith = {
-            "character": character,
-            "items_definitions": {
-                "Health Potion": {"name": "Health Potion", "itemType": "consumable", "value": 10}
-            },
-            "long_term_memory": f"Test memory created at {time.ctime()}",
-            "recent_history": [{"role": "user", "content": "Hello ADA!"}],
-            "turn_count": random.randint(1, 100),
-            "state": {"location": "Test Dungeon", "quest": "Verify Monolith"}
-        }
+        print(f"[SUCCESS] Loaded: {character.get('name')}")
+        
+        # --- TEST SAVE FUNCTION ---
+        print(f"\n--- Testing SAVE for ID: {target_id} ---")
+        
+        # 1. Modify a value (e.g., increment gold)
+        original_gold = character.get("gold", 0)
+        new_gold_value = original_gold + 10
+        character["gold"] = new_gold_value
+        print(f"Attempting to update gold: {original_gold} -> {new_gold_value}")
 
-        print(f"--- 2. Testing MONOLITH SAVE ---")
-        # Saves to 'ResumeAdventure' collection
-        save_success = save_monolith_to_db(monolith)
+        # 2. Call the save function
+        save_success = save_character(character)
         
         if save_success:
-            print("[SUCCESS] Monolith saved to 'ResumeAdventure' collection.")
-            
-            print(f"--- 3. Testing ADVENTURE RESUME ---")
-            # Reconstructs the state from 'ResumeAdventure'
-            resumed_monolith = resume_adventure(target_id)
-            
-            if resumed_monolith:
-                # Verification of key data points
-                check_turn = resumed_monolith.get("turn_count") == monolith["turn_count"]
-                check_memory = resumed_monolith.get("long_term_memory") == monolith["long_term_memory"]
-                
-                if check_turn and check_memory:
-                    print(f"[VERIFIED] Adventure successfully resumed at turn {resumed_monolith['turn_count']}!")
-                    print(f"Memory Restored: {resumed_monolith['long_term_memory']}")
-                else:
-                    print("[FAILURE] Resumed data does not match saved data.")
+            # 3. Verify by re-fetching from the DB
+            updated_char = load_character(target_id)
+            if updated_char.get("gold") == new_gold_value:
+                print(f"[SUCCESS] Database updated! New gold: {updated_char.get('gold')}")
             else:
-                print("[FAILURE] resume_adventure returned None.")
+                print(f"[FAIL] Save returned True, but data in DB is {updated_char.get('gold')}")
         else:
-            print("[FAILURE] save_monolith_to_db returned False.")
+            print("[FAIL] save_character function returned False.")
 
 if __name__ == "__main__":
-    test_monolith_flow()
+    test_load_and_save()
