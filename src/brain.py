@@ -1257,13 +1257,50 @@ def execute_enemy_action(enemy, player, action_type, action_data):
 
 
 """
-crea un json monolitico dove all'inizio ci sono i character 
-ogni volta che ce un oggetto nuovo trovato nella partita che non sta nel file json monolitoco
-trova il piu simile facendo una query sul database degli items e lo aggiungie al file monolitico come items
-(che poi verra aggiunto all'inventario del character, ma questo gia vinee fatto con questa impllentazione)
-ed per ogni check ad esempio il controllare il danno di un item lo prendi dal file monolitico
---> 
+This function manages the dynamic expansion of the “monolithic” JSON file during gameplay.
+
+1. Monolith Structure: The JSON contains character data and an “items_definitions” section 
+   that acts as a local cache for all items encountered.
+  
+2. Novelty Check: For each new item found in the game, the function checks whether its 
+   definition already exists in the monolith. If it is missing, it proceeds with enrichment.
+
+3. Query and Similarity: It does not search for an exact match, but performs a similarity search 
+   in the item database (items_db). If it finds a similar item (score > 0.4), it copies 
+   its entire definition to the monolith.
+
+4. Fallback Mechanism: If no valid match is found in the DB, it creates 
+   a generic object to avoid system errors, ensuring that each item always has data.
+
+5. Downstream Use: Once added to the monolith, any subsequent checks 
+   (e.g., damage calculation or magical effects) will read the data directly from the monolithic JSON 
+   without consulting the external database.
 """
+
+# we add to the monolith the items that are in the inventory but not yet defined in the monolith
+def enrich_monolith(found_item_names, monolith, items_db):
+    if "items_definitions" not in monolith:
+        monolith["items_definitions"] = {}
+
+    for name in found_item_names:
+        if name not in monolith["items_definitions"]:
+            # find the most similar item in the database
+            best_match, similarity = find_most_similar_item(name, items_db)
+            
+            # if similarity is above threshold, add to monolith
+            if similarity > 0.4:
+                monolith["items_definitions"][name] = best_match
+                print(f"[MONOLITH] Aggiunta definizione per: {name} (basata su {best_match['name']})")
+            else:
+                # print warning
+                print(f"[MONOLITH] Warning: No correspondence found for '{name}'")
+
+# if you want to save the monolith back to the database 
+# -> this can work also for saving the whole adventure, 
+# we only need to add short-term memory and other session data
+def save_monolith_to_db(monolith):
+    # update the character document in the database
+    save_character(monolith["character"])
 
 
 # Loads a character from the MongoDB 'Users' collection.
@@ -1346,6 +1383,14 @@ def main(character_id):
     else:
         print("\n[ERROR] No character found in database")
 
+    # 2. Initialize the monolith with character data
+    monolith = {
+        "character": character_data,
+        "items_definitions": {}
+    }
+
+    # Enrich the monolith with current inventory items
+    enrich_monolith(monolith["character"]["inventory"], monolith, ITEMS_DB)
 
     state = {"location": "Taverna Iniziale", 
              "quest": "Nessuna"
@@ -1433,10 +1478,13 @@ def main(character_id):
                     break
             
             #! ================= NORMAL TURN PROCESSING =================
-            # Add/remove items from inventory
-            for item in data.get("found_items", []):
-                if item not in character["inventory"]:
-                    character["inventory"].append(item)
+            # Add/remove items from inventory (with monolith enrichment)
+            new_items = data.get("found_items", [])
+            if new_items:
+                enrich_monolith(new_items, monolith, ITEMS_DB)
+                for item in new_items:
+                    if item not in monolith["character"]["inventory"]:
+                        monolith["character"]["inventory"].append(item)
 
             for item in data.get("lost_items", []):
                 if item in character["inventory"]:
@@ -1460,9 +1508,9 @@ def main(character_id):
             if "quest" in data:
                 state["quest"] = data["quest"]
 
-
-            equipped_weapon = character.get("equipped_weapon")
-            weapon_item = get_item_by_name(equipped_weapon, ITEMS_DB)
+            #We check into the monolith for the equipped weapon status
+            equipped = monolith["character"].get("equipped_weapon")
+            weapon_item = monolith["items_definitions"].get(equipped)
 
             if weapon_item:
                 if weapon_item.get("subType") == "wand":
