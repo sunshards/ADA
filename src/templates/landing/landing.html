@@ -15,19 +15,21 @@
             <a class="navbar-brand" href="#">ADA</a>
             <ul class="navbar-nav ms-auto mb-2 mb-lg-0 gap-2 align-items-center">
                 <li class="nav-item">
-                    <a class="nav-link" href="#">Informazioni</a>
+                    <a class="nav-link" href="#">About</a>
                 </li>
 
-                {# --- TEST LOGIN LOGIC HERE --- #}
                 {% if g.user %}
                     <li class="nav-item">
+                        <a class="navbar-text me-2 text-decoration-none" href="{{ url_for('selection.selection') }}">Your Characters</a>
+                    </li>
+                    <li class="nav-item">
                         <span class="navbar-text me-2">
-                            Ciao, <strong>{{ g.user.Username }}</strong>!
+                            Hello, <strong>{{ g.user.Username }}</strong>!
                         </span>
                     </li>
                     <li class="nav-item">
                         <a class="btn btn-outline-danger btn-sm" href="{{ url_for('auth.logout') }}">
-                            Esci
+                            Log out
                         </a>
                     </li>
                 {% else %}
@@ -48,9 +50,9 @@
             <div class="text-center mb-4">
                 <h2>
                     {% if g.user %}
-                        Ada ti da il bentornato, {{ g.user.Username }}.
+                        Ada welcomes you, {{ g.user.Username }}.
                     {% else %}
-                        Ada ti da il benvenuto.
+                        Ada welcomes you.
                     {% endif %}
                 </h2>
             </div>
@@ -60,17 +62,20 @@
                 method="POST"
                 action="{{ url_for('creation.creation')}}"
             >
+                <label for="characterPrompt" class="form-label">
+                    <h5>Who is this character?</h5>
+                </label>
                 <textarea type="text" 
                     class="form-control-lg mb-2" 
                     id="mainTextArea" 
                     name="characterPrompt"
-                    placeholder="Inserisci la descrizione del tuo personaggio..."
+                    placeholder="A weary traveler from the northern wastes, known for his silver cloak and a mysterious affinity for fire magic..."
                     style="overflow: auto; height: 150px; max-height: 40vh;"
                 ></textarea>
                 <input 
                     type="submit" 
-                    value="Inizia Creazione" 
-                    class="btn btn-primary"
+                    value="Create" 
+                    class="btn btn-primary col-md-1 mt-3 align-self-center" 
                 >
             </form>
         </div>
