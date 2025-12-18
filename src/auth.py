@@ -42,6 +42,18 @@ def login():
         # print(email, password)
     return render_template('auth/login.html')
 
+@bp.route('/logout')
+def logout():
+    # This removes the 'user_id' (and everything else) from the browser cookie
+    session.clear()
+    
+    # Optional: Flash a message so the user knows they successfully signed out
+    flash("Sei stato disconnesso con successo.", "info")
+    
+    # Redirect back to your landing page
+    return redirect(url_for('landing.landing'))
+
+
 @bp.route('/register', methods=('GET', 'POST'))
 def register():
     if request.method == "POST":
