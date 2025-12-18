@@ -31,7 +31,7 @@ def login():
             else:
                 session.clear()
                 session['user_id'] = str(user['_id'])
-                return redirect(url_for('landing.landing'))
+                return redirect(url_for('selection.selection'))
 
         except Exception as e:
             error = f"An error occurred: {str(e)}"
