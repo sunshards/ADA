@@ -1,4 +1,6 @@
 import os
+import random
+import time
 from flask import Flask
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -6,7 +8,8 @@ from bson.objectid import ObjectId
 # Import both functions for the test
 from src.brain import load_character, save_character 
 
-load_dotenv()
+# Import the new monolith functions
+from src.brain import load_character, save_monolith_to_db, resume_adventure 
 
 target_id = "6943f1e9b2b9aad9d81bb75f"
 

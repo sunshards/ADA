@@ -17,10 +17,10 @@ from flask import (
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-json_path = BASE_DIR / "json_exp"
-skill_path = json_path / "skill.json"
-item_path = json_path / "item.json"
-enemy_path = json_path / "enemies.json"
+# json_path = BASE_DIR / "json_exp"
+# skill_path = json_path / "skill.json"
+# item_path = json_path / "item.json"
+# enemy_path = json_path / "enemies.json"
 
 # Load the .env file -> so it takes the api key (remember to create it)
 load_dotenv()
@@ -663,52 +663,57 @@ def resolve_skill(skill, character):
 
 # MAke so that if the item is a weapon it changes the equipped weapon
 def use_item(character, real_name, items):
-    real_name = real_name.strip().lower()
-    inventory_map = {i.lower(): i for i in character["inventory"]}
+    real_name = real_name.strip()
+    # 1. Check if the character actually has the item in inventory
+    if real_name not in character["inventory"]:
+        return False, "Item not found in inventory"
 
-    if real_name not in inventory_map:
-        return False, "Item not found"
+    # 2. Retrieve technical definition from the Monolith
+    item_def = monolith["items_definitions"].get(real_name)
+    
+    if not item_def:
+        # Fallback: If not in monolith, try to enrich it now
+        enrich_monolith([real_name], monolith, ITEMS_DB)
+        item_def = monolith["items_definitions"].get(real_name)
+        
+    if not item_def:
+        return False, "Technical definition for this item is missing."
 
-    real_name = inventory_map[real_name]
-    item = next((i for i in items if i["name"] == real_name), None)
-    if not item:
-        return False, "Invalid item"
+    # 3. Handle Equipment (Weapon/Magical)
+    if item_def.get("itemType") in ("weapon", "magical"):
+        character["equipped_weapon"] = item_def["name"]
+        return True, f"You equip the {item_def['name']}."
 
-    # Equip weapon/magical
-    if item["itemType"] in ("weapon", "magical"):
-        character["equipped_weapon"] = item["name"]
-        return True, f"You equip the {item['name']}."
-
-    # Healing or fixed effect
-    for effect in item.get("effects", []):
+    # 4. Handle Effects (Healing, etc.)
+    for effect in item_def.get("effects", []):
         if effect["kind"] == "heal":
             value = str(effect["value"]).strip()
-
-            # Detect dice expression like 3d6+2
-            dice_pattern = r"^\d+d\d+([+-]\d+)?$"
-            if re.match(dice_pattern, value):
+            # Dice logic (e.g., "2d6+3")
+            if "d" in value:
                 heal, rolls = roll_dice(value)
                 character["current_hp"] = update_stat(character["current_hp"], heal, 0, character["max_hp"])
-                return True, f"You heal for {heal} HP (rolls: {rolls})"
+                # Consumables are usually removed after use
+                character["inventory"].remove(real_name)
+                return True, f"You heal for {heal} HP (rolls: {rolls})."
             else:
-                # Treat as fixed number
-                try:
-                    heal = int(value)
-                except:
-                    heal = 0
+                # Fixed value logic
+                heal = int(value) if value.isdigit() else 0
                 character["current_hp"] = update_stat(character["current_hp"], heal, 0, character["max_hp"])
+                character["inventory"].remove(real_name)
                 return True, f"You heal for {heal} HP."
 
-    # Handle consumable uses
-    if "uses" in item and item["uses"] > 0:
-        item["uses"] -= 1
-        if item["uses"] == 0:
+    # 5. Handle Limited Usages (Wands/Staffs)
+    if "usages" in item_def and item_def["usages"] > 0:
+        item_def["usages"] -= 1
+        if item_def["usages"] <= 0:
             character["inventory"].remove(real_name)
-        return True, f"Used {real_name}, {item['uses']} uses left"
+            return True, f"The {real_name} shatters as its last charge is spent."
+        return True, f"Used {real_name}. {item_def['usages']} charges remain."
 
-    # Default: remove consumable
-    character["inventory"].remove(real_name)
-    return True, f"Used {real_name}"
+    # Default fallback: item is used up and removed
+    if real_name in character["inventory"]:
+        character["inventory"].remove(real_name)
+    return True, f"You used the {real_name}."
 
 
 
@@ -835,10 +840,18 @@ Example: {{"action": "use skill", "target_skill": "Fire Bolt", "confidence": 0.8
 #! in the actual database comabt loop substitute all the reference 
 #! to the items_db with a query to the database
 def get_item_by_name(name: str, items_db: list):
-    return next((i for i in items_db if i["name"] == name), None)
+    return monolith.get("items_definitions", {}).get(name)
+    
+    # OLD take for download json
+    # return next((i for i in items_db if i["name"] == name), None)
 
 def get_skill_by_name(name: str, skills_db: list):
-    return next((s for s in skills_db if s["name"] == name), None)
+    # For now, we assume skills might still be in a global if not session-specific,
+    # but ideally, they should also move to monolith['skill_definitions']
+    return monolith.get("skill_definitions", {}).get(name)
+    
+    # OLD take for download json
+    # return next((s for s in skills_db if s["name"] == name), None)
 
 with open(skill_path, "r", encoding="utf-8") as f:
     SKILLS_DB = json.load(f)
@@ -917,7 +930,8 @@ def combat_loop(player, enemies, items, state, mode="manual", similarity_thresho
         combat_text = ""
         
         if action == "attack":
-            weapon_item = get_item_by_name(player["equipped_weapon"], items)
+            # OLD: weapon_item = get_item_by_name(player["equipped_weapon"], items)
+            weapon_item = monolith["items_definitions"].get(player["equipped_weapon"])
             result = combat_attack(player, current_enemy, weapon_item=weapon_item)
             rolls = result["weapon_rolls"] or []
             combat_text = f"You attack {current_enemy['name']} with {player['equipped_weapon']} for {result['damage']} damage."
@@ -1256,6 +1270,140 @@ def execute_enemy_action(enemy, player, action_type, action_data):
 
 
 
+"""
+This function manages the dynamic expansion of the “monolithic” JSON file during gameplay.
+
+1. Monolith Structure: The JSON contains character data and an “items_definitions” section 
+   that acts as a local cache for all items encountered.
+  
+2. Novelty Check: For each new item found in the game, the function checks whether its 
+   definition already exists in the monolith. If it is missing, it proceeds with enrichment.
+
+3. Query and Similarity: It does not search for an exact match, but performs a similarity search 
+   in the item database (items_db). If it finds a similar item (score > 0.4), it copies 
+   its entire definition to the monolith.
+
+4. Fallback Mechanism: If no valid match is found in the DB, it creates 
+   a generic object to avoid system errors, ensuring that each item always has data.
+
+5. Downstream Use: Once added to the monolith, any subsequent checks 
+   (e.g., damage calculation or magical effects) will read the data directly from the monolithic JSON 
+   without consulting the external database.
+"""
+
+# we add to the monolith the items that are in the inventory but not yet defined in the monolith
+def enrich_monolith(found_item_names, monolith, items_db):
+    if "items_definitions" not in monolith:
+        monolith["items_definitions"] = {}
+
+    for name in found_item_names:
+        if name not in monolith["items_definitions"]:
+            # find the most similar item in the database
+            best_match, similarity = find_most_similar_item(name, items_db)
+            
+            # if similarity is above threshold, add to monolith
+            if similarity > 0.4:
+                monolith["items_definitions"][name] = best_match
+                print(f"[MONOLITH] Aggiunta definizione per: {name} (basata su {best_match['name']})")
+            else:
+                # print warning
+                print(f"[MONOLITH] Warning: No correspondence found for '{name}'")
+
+
+# Saves the complete state of the adventure to the database.
+# This includes character stats, discovered item definitions, and session memory.
+def save_monolith_to_db(monolith):
+    try:
+        char_id = monolith["character"].get("_id")
+        
+        if not char_id:
+            print("[ERROR] Cannot save monolith: Character ID missing.")
+            return False
+
+        if isinstance(char_id, str):
+            char_id = ObjectId(char_id)
+
+        # Build the session document
+        session_payload = {
+            "character_id": char_id,
+            "character_data": monolith["character"],
+            "items_definitions": monolith.get("items_definitions", {}),
+            "session_data": {
+                "long_term_memory": monolith.get("long_term_memory", ""),
+                "recent_history": monolith.get("recent_history", [])[-20:],
+                "turn_count": monolith.get("turn_count", 0),
+                "state": monolith.get("state", {})
+            },
+            "last_saved": time.time()
+        }
+
+        # Save to the specific ResumeAdventure collection
+        current_app.db['ResumeAdventure'].update_one(
+            {"character_id": char_id},
+            {"$set": session_payload},
+            upsert=True
+        )
+        return True
+    except Exception as e:
+        print(f"[ERROR] Failed to save to ResumeAdventure: {e}")
+        return False
+    
+
+# Fetches the monolithic state from 'ResumeAdventure' and reconstructs the game state.
+def resume_adventure(monolith_id):
+    try:
+        session_doc = current_app.db['ResumeAdventure'].find_one({"character_id": ObjectId(monolith_id)})
+        if not session_doc:
+            print(f"[ERROR] No saved adventure found for ID: {monolith_id}")
+            return None
+
+        # Reconstruct the monolith structure
+        monolith = {
+            "character": session_doc["character_data"],
+            "items_definitions": session_doc.get("items_definitions", {}),
+            "long_term_memory": session_doc["session_data"].get("long_term_memory", ""),
+            "recent_history": session_doc["session_data"].get("recent_history", []),
+            "turn_count": session_doc["session_data"].get("turn_count", 0),
+            "state": session_doc["session_data"].get("state", {})
+        }
+        
+        print(f"[SUCCESS] Resumed adventure for {monolith['character']['name']} at turn {monolith['turn_count']}.")
+        return monolith
+
+    except Exception as e:
+        print(f"[ERROR] Failed to resume adventure: {e}")
+        return None
+
+
+def start_game(character_id, resume=False):
+    if resume:
+        monolith = resume_adventure(character_id)
+        if not monolith:
+            print("Fallback: Starting fresh load...")
+            # If resume fails, load character normally
+            character_data = load_character(character_id)
+            monolith = {
+                "character": character_data,
+                "items_definitions": {},
+                "long_term_memory": "",
+                "recent_history": [],
+                "turn_count": 0,
+                "state": {"location": "Initial Tavern", "quest": "None"}
+            }
+    else:
+        character_data = load_character(character_id)
+        monolith = {
+            "character": character_data,
+            "items_definitions": {},
+            "long_term_memory": "",
+            "recent_history": [],
+            "turn_count": 0,
+            "state": {"location": "Initial Tavern", "quest": "None"}
+        }
+
+    # Run the main loop with the monolith
+    main(monolith)
+
 
 # Loads a character from the MongoDB 'Users' collection.
 # Note: Assuming the character itself is stored within the 'Characters' array 
@@ -1273,6 +1421,28 @@ def load_character(character_id_str):
         print(f"[ERROR] Lookup failed: {e}")
         return None
 
+# Saves the updated character data back to the MongoDB 'Characters' collection.
+def save_character(character_data):
+    try:
+        # We need the ID to know which document to update
+        char_id = character_data.get("_id")
+        if not char_id:
+            print("[ERROR] Character data has no _id. Cannot save.")
+            return False
+
+        # Ensure we are using an ObjectId for the filter
+        if isinstance(char_id, str):
+            char_id = ObjectId(char_id)
+
+        # Prepare the data: Remove the _id from the update body to avoid errors
+        update_data = character_data.copy()
+        update_data.pop("_id", None)
+
+        # Update the document in the 'Characters' collection
+        result = current_app.db['Characters'].update_one(
+            {"_id": char_id},
+            {"$set": update_data}
+        )
 
 # Saves the updated character data back to the MongoDB 'Characters' collection.
 def save_character(character_data):
@@ -1311,40 +1481,55 @@ def save_character(character_data):
 #!!! character_id should be set externally before running main()
 
 # --- Game Loop ---
-def main(character_id):
+def main(id_or_monolith):
     # Python has to explicitly state that we are using the global variables (the serpent is cleraly not fit to be a C competitor :-P)
-    global long_term_memory
-    global turn_count
-    global recent_history
-    global mana_regen_per_turn
-    global character
-   
-    print("=== ADA TI DA' IL BENVENUTO ===")
-    #    print("\nDescribe your character in your own words (free text):")
-    #    user_desc = input("> ")
-
-    #    character = create_character_from_description(user_desc)
+    global long_term_memory, turn_count, recent_history, character, monolith
     
-    # 1. Load the character from the database
-    character_data = load_character(character_id)
-    
-    if character_data:
-        character = character_data
-        # Ensure current_hp exists for the session
-        if "current_hp" not in character:
-            character["current_hp"] = character.get("max_hp", 50)
-            
-        print(f"\nYour character '{character['name']}' has been correctly loaded from the database.")
+    #! ================= INITIALIZATION LOGIC =================
+    if isinstance(id_or_monolith, dict):
+        # We received a Monolith (Resume Case)
+        monolith = id_or_monolith
+        print(f"[RESUME] Resuming adventure for {monolith['character']['name']}...")
     else:
-        print("\n[ERROR] No character found in database")
+        # We received a String ID (Fresh Start Case)
+        character_data = load_character(id_or_monolith)
+        if not character_data:
+            print("\n[ERROR] No character found in database. Cannot start adventure.")
+            return
 
+        # Build a fresh monolith
+        monolith = {
+            "character": character_data,
+            "items_definitions": {},
+            "long_term_memory": "The character is located in the Initial Tavern. No relevant events so far.",
+            "recent_history": [],
+            "turn_count": 0,
+            "state": {"location": "Initial Tavern", "quest": "None"}
+        }
+        print(f"[NEW GAME] Starting fresh adventure for {character_data['name']}...")
+
+    # Sync local variables with monolith
+    character = monolith["character"]
+    long_term_memory = monolith.get("long_term_memory")
+    recent_history = monolith.get("recent_history")
+    turn_count = monolith.get("turn_count")
+    state = monolith.get("state", {"location": "Initial Tavern", "quest": "None"})
+
+    # Ensure HP exists
+    if "current_hp" not in character:
+        character["current_hp"] = character.get("max_hp", 50)
+
+    # Pre-enrich monolith with starting inventory
+    enrich_monolith(character["inventory"], monolith, ITEMS_DB)
+
+    print("=== ADA TI DA' IL BENVENUTO ===")
 
     state = {"location": "Taverna Iniziale", 
              "quest": "Nessuna"
     }
 
     # Choose combat mode
-    print("\nChoose combat mode:")
+    print("\n Choose combat mode:")
     print("1. Manual (you select actions)")
     print("2. AI Narration (you narrate, AI decides actions)")
     mode_choice = input("> ").strip()
@@ -1390,7 +1575,7 @@ def main(character_id):
             if (turn_count - last_combat_turn > combat_cooldown and 
                 random.random() < 0.2 and  # 20% chance per turn
                 state["location"].lower() not in ["tavern", "town", "city", "shop", "taverna iniziale", "inn"]):
-                
+                #                                Avoid combats in safe zones (we need to load it from db (with the form: isSafe?) later)
                 print("\n[ALERT] You are ambushed by enemies!")
                 enemies = spawn_enemy(state["location"].lower(), character["level"])
                 victory = combat_loop(character, enemies, ITEMS_DB, state, mode=combat_mode)
@@ -1425,10 +1610,13 @@ def main(character_id):
                     break
             
             #! ================= NORMAL TURN PROCESSING =================
-            # Add/remove items from inventory
-            for item in data.get("found_items", []):
-                if item not in character["inventory"]:
-                    character["inventory"].append(item)
+            # Add/remove items from inventory (with monolith enrichment)
+            new_items = data.get("found_items", [])
+            if new_items:
+                enrich_monolith(new_items, monolith, ITEMS_DB)
+                for item in new_items:
+                    if item not in monolith["character"]["inventory"]:
+                        monolith["character"]["inventory"].append(item)
 
             for item in data.get("lost_items", []):
                 if item in character["inventory"]:
@@ -1452,9 +1640,9 @@ def main(character_id):
             if "quest" in data:
                 state["quest"] = data["quest"]
 
-
-            equipped_weapon = character.get("equipped_weapon")
-            weapon_item = get_item_by_name(equipped_weapon, ITEMS_DB)
+            #We check into the monolith for the equipped weapon status
+            equipped = character.get("equipped_weapon")
+            weapon_item = monolith["items_definitions"].get(equipped)
 
             if weapon_item:
                 if weapon_item.get("subType") == "wand":
@@ -1486,8 +1674,17 @@ def main(character_id):
             print(f"\n[NARRATOR ERROR] The master is confused: {e}")
 
 if __name__ == "__main__":
-    test_character_id = '6943f1e9b2b9aad9d81bb75f'
-    main(test_character_id)
+    target_id = '6943f1e9b2b9aad9d81bb75f'
+    
+    # Check if a saved session exists for this character
+    saved_session = resume_adventure(target_id)
+    
+    if saved_session:
+        # Resume the existing adventure
+        main(saved_session)
+    else:
+        # Start fresh using only the character ID
+        main(target_id)
 
 
 

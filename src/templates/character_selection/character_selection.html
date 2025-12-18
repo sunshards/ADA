@@ -5,7 +5,11 @@
 {% endblock %}
 
 {% block js %}
-    <script type="text/javascript" src="{{ url_for('static', filename='character_sheet/character_selection.js') }}"></script>
+    <script>
+        chatURL = "{{url_for('chat.chat')}}"
+        redirectURL = "{{url_for('selection.set_character')}}"
+    </script>
+    <script type="text/javascript" src="{{ url_for('static', filename='character_selection/character_selection.js') }}"></script>
 {% endblock %}
 
 
@@ -38,10 +42,20 @@
                     <button type="button" class="btn btn-primary">
                         <i data-feather="edit"></i>
                     </button>
-                    <button type="button" class="btn btn-primary">
-                        <i data-feather="trash"></i>
+
+                    <form action="{{ url_for('selection.delete_character') }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="character_id" value="{{ character['_id']|string }}">
+                        
+                        <button type="submit" class="btn btn-primary" onclick="return confirm('Sicuro di voler eliminare {{ character.name }}?')">
+                            <i data-feather="trash"></i>
+                        </button>
+                    </form>
+                    
+                    <button type="button" 
+                        class="btn btn-primary play-button" 
+                        data-character-id="{{character['id']}}">
+                        Gioca
                     </button>
-                    <button type="button" class="btn btn-primary" value="{{character['name']}}">Gioca</button>
                 </div>
             </div>
 
