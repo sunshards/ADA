@@ -364,23 +364,23 @@ function addPlayerCard(username, avatar_src, life_percentage=100) {
         // Create HTML elements
     
         const playerCard = document.createElement('div');
-        playerCard.class = 'mb-4 player-card rounded-1';
+        playerCard.className = 'mb-4 player-card rounded-1';
         playerCard.id = username; //used for removal
     
         const playerAvatar = document.createElement('img')
-        playerAvatar.class = "card-img-top player-avatar"
+        playerAvatar.className = "card-img-top player-avatar"
         playerAvatar.setAttribute('alt', 'Player Avatar')
         playerAvatar.setAttribute('src', avatar_src)
 
         const playerInfo = document.createElement('div');
-        playerInfo.class = 'player-info';     
+        playerInfo.className = 'player-info';     
         
         const playerName = document.createElement('span');
-        playerName.class = 'player-name';
+        playerName.className = 'player-name';
         playerName.innerHTML = username;
 
         const lifebarContainer = document.createElement('div');
-        lifebarContainer.class = 'progress lifebar-container'
+        lifebarContainer.className = 'progress lifebar-container'
         lifebarContainer.setAttribute('role', 'lifebar')
         lifebarContainer.setAttribute('aria-label', 'Lifebar')
         lifebarContainer.setAttribute('aria-valuenow',  String(life_percentage))
@@ -388,9 +388,8 @@ function addPlayerCard(username, avatar_src, life_percentage=100) {
         lifebarContainer.setAttribute('aria-valuemax', '100')
 
         const lifebarHealth = document.createElement('div');
-        lifebarHealth.class = "progress-bar lifebar-health"
-        lifebarHealth.style = `width: ${life_percentage}`
-
+        lifebarHealth.className = "progress-bar lifebar-health"
+        lifebarHealth.setAttribute('style', `width: ${life_percentage}%`)
 
         // Assemble
         const playerContainer = document.getElementById('player-container')
