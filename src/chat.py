@@ -22,7 +22,7 @@ def chat():
     
     # You might get avatar from database or session
     # avatar = session.get('avatar', 'temp/avatar_animal_00001.png')
-    
+    avatar='default'
     # Get messages and players 
     messages = []  # From database
     players = []   # From database
@@ -30,7 +30,7 @@ def chat():
     return render_template('chat/chat.html',
                             user_id=user_id,
                             username=username,
-                            # avatar=avatar,
+                            avatar=avatar,
                             messages=messages,
                             players=players)
 
@@ -43,15 +43,18 @@ def handle_connect():
     # Store connection info
     active_users[request.sid] = {
         'user_id': user_id,
-        'room': room
+        'username': username,
+        'room': room,
+        'avatar': 'default'
     }
     
     join_room(room)
-    print(f'User {user_id} connected to room {room}')
+    print(f'User {user_id}:{username} connected to room {room}')
     
     # Notify others in the room
     emit('user_joined', {
-        'user_id': username,
+        'user_id': user_id,
+        'username': username,
         'sid': request.sid,
         'timestamp': datetime.now().isoformat()
     }, room=room, skip_sid=request.sid)
@@ -73,6 +76,7 @@ def handle_disconnect():
         # Notify others
         emit('user_left', {
             'user_id': user_data['user_id'],
+            'username': user_data['username'],
             'timestamp': datetime.now().isoformat()
         }, room=room)
         
@@ -84,6 +88,7 @@ def handle_disconnect():
 def handle_send_message(data):
     """Handle incoming chat messages"""
     if request.sid not in active_users:
+        print("Incoming message on server not in active_users")
         return
     
     user_data = active_users[request.sid]
@@ -98,20 +103,20 @@ def handle_send_message(data):
     message_obj = {
         'id': str(uuid.uuid4()),
         'user_id': user_data['user_id'],
-        'username': data.get('username', 'Anonymous'),
-        'avatar': data.get('avatar', 'default.png'),
+        'username': user_data['username'],
+        'avatar': user_data['avatar'],
         'message': message,
         'timestamp': datetime.now().isoformat(),
         'type': 'incoming',  # For other users
         'room': room
     }
     
-    # Save to database here (add your database logic)
+    # Save to database here in the future
     
-    # Broadcast to room
+    # Broadcast to room except to sender to display incoming message
     emit('new_message', message_obj, room=room, skip_sid=request.sid)
     
-    # Send confirmation to sender
+    # Send confimation to sender to display outgoing message
     sender_message = message_obj.copy()
     sender_message['type'] = 'outgoing'
     emit('message_sent', sender_message)
@@ -125,15 +130,16 @@ def handle_typing(data):
     user_data = active_users[request.sid]
     emit('user_typing', {
         'user_id': user_data['user_id'],
-        'username': data.get('username'),
+        'username': user_data['username'],
         'is_typing': data.get('is_typing', False)
     }, room=user_data['room'], skip_sid=request.sid)
 
+# currently not used ?
 @socketio.on('join_room')
 def handle_join_room(data):
     room = data.get('room', 'default')
     user_id = data.get('user_id', 'anonymous')
-    
+
     # Leave previous room
     if request.sid in active_users:
         old_room = active_users[request.sid]['room']

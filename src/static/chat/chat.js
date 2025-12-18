@@ -109,6 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function handleNewMessage(data) {
+        console.log('received new message')
         // Add incoming message to chat
         addMessageToChat(data, 'incoming');
         playNotificationSound();
@@ -122,15 +123,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function handleUserJoined(data) {
         // Show user joined notification
-        showSystemMessage(`${data.user_id} joined the chat`, 'info');
+        showSystemMessage(`${data.username} joined the chat`, 'info');
         
-        // Update users list
-        // You might want to fetch updated list or update locally
+        // Update users list, fetch updated list or update locally
     }
 
     function handleUserLeft(data) {
         // Show user left notification
-        showSystemMessage(`${data.user_id} left the chat`, 'info');
+        showSystemMessage(`${data.username} left the chat`, 'info');
     }
 
     function handleUserTyping(data) {
@@ -157,18 +157,19 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Add message locally immediately 
-        const tempMessage = {
-            id: 'temp_' + Date.now(),
-            user_id: currentUser.id,
-            username: currentUser.username,
-            avatar: currentUser.avatar,
-            message: message,
-            timestamp: new Date().toISOString(),
-            type: 'outgoing'
-        };
+        // // Add message locally immediately for UX
+        // const tempMessage = {
+        //     id: 'temp_' + Date.now(),
+        //     user_id: currentUser.id,
+        //     username: currentUser.username,
+        //     avatar: currentUser.avatar,
+        //     message: message,
+        //     timestamp: new Date().toISOString(),
+        //     type: 'outgoing'
+        // };
         
-        addMessageToChat(tempMessage, 'outgoing');
+        //addMessageToChat(tempMessage, 'outgoing');
+
         messageTextarea.value = '';
         
         // Clear typing indicator
@@ -177,8 +178,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Send to server
         socket.emit('send_message', {
             message: message,
-            username: currentUser.username,
-            avatar: currentUser.avatar
         });
     }
 
@@ -214,10 +213,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function addMessageToChat(messageData, type) {
         // Remove temporary message if exists
-        const tempMessage = document.querySelector(`[data-message-id="${messageData.id}"]`);
-        if (tempMessage) {
-            tempMessage.remove();
-        }
+        // const tempMessage = document.querySelector(`[data-message-id="${messageData.id}"]`);
+        // if (tempMessage) {
+        //     tempMessage.remove();
+        // }
         
         // Create message element
         const messageDiv = document.createElement('div');
@@ -266,11 +265,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Scroll to bottom
         scrollToBottom();
-        
-        // Mark as read (optional)
-        if (type === 'incoming') {
-            markMessageAsRead(messageData.id);
-        }
     }
 
     function showSystemMessage(text, type = 'info') {
@@ -323,6 +317,7 @@ document.addEventListener('DOMContentLoaded', function() {
         messagesContainer.innerHTML = '';
     }
 
+    // currently not used 
     function loadExistingMessages() {
         // Load previous messages via AJAX (optional)
         fetch(`/api/chat/messages?room=${currentRoom}`)
@@ -338,13 +333,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    function markMessageAsRead(messageId) {
-        // Send read receipt (optional)
-        if (socket && socket.connected) {
-            socket.emit('message_read', { message_id: messageId });
-        }
-    }
-
     function playNotificationSound() {
         // Optional: Play sound for new messages
         const audio = new Audio('/static/notification.mp3');
@@ -356,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Implement based on your player-box structure
     }
     
-    // Expose functions for debugging (optional)
+    // Expose functions for debugging
     window.chat = {
         connect: connectSocket,
         disconnect: () => socket.disconnect(),
