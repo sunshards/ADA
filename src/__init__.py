@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-socketio = SocketIO()
+socketio = SocketIO(cors_allowed_origins="*", async_mode='eventlet')
 
 def create_app(test_config=None):
     # Adding src to sys.path: (the list of paths python looks at to import things):

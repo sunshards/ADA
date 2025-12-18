@@ -73,18 +73,16 @@ def handle_disconnect():
         user_data = active_users[request.sid]
         room = user_data['room']
         
-        # Notify others
+        del active_users[request.sid]
+
         emit('user_left', {
-            'sid': request.sid,
-            'user_id': user_data['user_id'],
+            'active_users': active_users,
             'username': user_data['username'],
             'timestamp': datetime.now().isoformat()
         }, room=room)
         
-        # Clean up
-        del active_users[request.sid]
         print(f'User {user_data["user_id"]} disconnected')
-
+    
 @socketio.on('send_message')
 def handle_send_message(data):
     """Handle incoming chat messages"""
@@ -156,13 +154,13 @@ def handle_join_room(data):
         'message': f'Joined room: {room}'
     })
 
-def get_users_in_room(room):
-    """Get list of users in a room"""
-    users = []
-    for sid, data in active_users.items():
-        if data['room'] == room:
-            users.append({
-                'user_id': data['user_id'],
-                'sid': sid
-            })
-    return users
+# def get_users_in_room(room):
+#     """Get list of users in a room"""
+#     users = []
+#     for sid, data in active_users.items():
+#         if data['room'] == room:
+#             users.append({
+#                 'user_id': data['user_id'],
+#                 'sid': sid
+#             })
+#     return users

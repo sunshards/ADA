@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function handleUserLeft(data) {
         showSystemMessage(`${data.username} left the chat`, 'info');
-        removeActivePlayer(data.sid)
+        refreshActivePlayers(data.active_users)
     }
 
     function handleUserTyping(data) {
@@ -352,10 +352,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function refreshPlayerCards(users_sid) {
-        player_cards = document.getElementsByClassName('player-card')
-        for (card of player_cards) {
-            card.remove()
-        }
+        const player_cards = document.querySelectorAll('.player-card');
+        player_cards.forEach(card => card.remove());
+        
         for (sid of users_sid) {
             addPlayerCard(sid)
         }
