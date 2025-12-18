@@ -17,9 +17,6 @@ skill_path = json_path / "skill.json"
 item_path = json_path / "item.json"
 enemy_path = json_path / "enemies.json"
 
-
-
-
 # Load the .env file -> so it takes the api key (remember to create it)
 load_dotenv()
 
@@ -66,7 +63,7 @@ system_rules =  {
         - location/quest: update state if changed
         - encounter: true if a combat encounter starts
         - use negative numbers for losses, positive for gains
-        - xp could be gainend only after combat
+        - xp could be gained only after combat
         - Never decide for the player
         - Output ONLY raw JSON
         - Do NOT use markdown
@@ -137,16 +134,16 @@ def extract_json(text):
     # I stole this, don't judge me. Regrex are black magic to me! :-(
     match = re.search(r'\{.*\}', text, re.DOTALL)
     if not match:
-        raise ValueError("No found JASON object in the text")
+        raise ValueError("No found JSON object in the text")
     return json.loads(match.group())
 
 
 
 
-# Inspiration: Claude playing Pokémon (too complicated to implement here)
-# from point to maxthokens (point2) -> summary1 
-# from point2 to maxthokens (point3) -> summary2
-# Context saved: summary1 + summary2 + recent messages (?)
+# Inspiration: Twitch channel called "Claude playing Pokémon" (too complicated to implement here)
+# from point to maxtokens (point2) -> summary1 
+# from point2 to maxtokens (point3) -> summary2
+# Context saved: summary1 + summary2 + (recent messages ? )
 
 # Summarises the long-term memory by extracting the most important events from recent history
 # Updates the memory so the AI can maintain context without exceeding token limits
@@ -288,7 +285,7 @@ def create_character_from_description(description: str) -> dict:
     character["skills"] = selected_skills
 
     # --- Assign inventory (weapon/item) based on similarity ---
-    #? We dont ask the ai to suggest anything, we use the characher description to find the closest item that fit it
+    #? We dont ask the ai to suggest anything, we use the characher description to find the closest item that fits
     usable_items = []
     for i in items_db:
         if i["itemType"] in ("weapon", "magical", "consumable"):
@@ -367,7 +364,7 @@ def create_character_from_description(description: str) -> dict:
 
 # Finds the most similar item based on description using TF-IDF and cosine similarity
 # Tutorial used: (https://www.newscatcherapi.com/blog-posts/ultimate-guide-to-text-similarity-with-python)
-#! Remember to do: uv add scikit-learn
+# Depends on: scikit-learn
 def find_most_similar_item(description, items):
     # Builds the corpus: first the character description, then all the item descriptions
     corpus = [description] + [item['description'] for item in items]
@@ -395,12 +392,13 @@ classes = [
 ]
 
 
-# TODO: Skills that do danamge add this damange to the overlall damage of the weapon equipped (if any)
-# if a skill do damage (min-max damange -> dice: of the skill do a max damange of 6 we use a d6, if 12 it does a d12), if it doesnt it has NULL as 0 damage
-# if there a buff or debuff: we lunch a dice (i dont )
+# TODO
+# Skills that do damage add this damange to the overlall damage of the weapon equipped (if any)
+# if a skill does damage (min-max damange -> dice: of the skill do a max damange of 6 we use a d6, if 12 it does a d12), if it doesnt it has NULL as 0 damage
+# if there is buff or debuff: we throw a dice (currently i dont)
 # force and intelligence could affect the damage of physical and magical weapons/skills
 # DEX is used to eccet chance to hit or not be hit and the one that starts first the turn in combat
-# if we want to add more complexity to attack we can add radius (so it can hit multiple enemies)
+# if we want to add more complexity to attack we can add area-radius (so it can hit multiple enemies)
 
 def roll_d6():
     return random.randint(1, 6)
@@ -1204,7 +1202,7 @@ def execute_enemy_action(enemy, player, action_type, action_data):
 
 # --- Game Loop ---
 def main():
-    # Python has to explicitly state that we are using the global variables (the serpet is cleraly not fit to be a C competitor :-P)
+    # Python has to explicitly state that we are using the global variables (the serpent is cleraly not fit to be a C competitor :-P)
     global long_term_memory
     global turn_count
     global recent_history
