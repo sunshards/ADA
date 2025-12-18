@@ -3,6 +3,9 @@ import sys
 from flask import Flask, render_template
 from flask_socketio import SocketIO
 from pymongo import MongoClient
+from dotenv import load_dotenv
+
+load_dotenv()
 
 socketio = SocketIO()
 
@@ -14,14 +17,15 @@ def create_app(test_config=None):
     app = Flask(__name__)
 
     app.config.update(
+        # MAX_CONTENT_LENGTH = 12 * 1024 * 1024 # Hard limit 5MB
         TESTING=True,
         EXPLAIN_TEMPLATE_LOADING=False,
         SECRET_KEY = 'dev'
     )
+    connection_string = os.getenv("CONNECTION_STRING")
+    
 
-    CONNECTION_STRING = "mongodb+srv://ADAdmin:yR3BZdsB3gWXGgYo@clusterada.7tjhv8u.mongodb.net/?appName=ClusterADA"
-
-    client = MongoClient(CONNECTION_STRING)
+    client = MongoClient(connection_string)
     app.mongo_client = client
     
     app.db = client["ADADatabase"]
