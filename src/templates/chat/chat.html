@@ -1,7 +1,24 @@
 {% extends 'base.html' %}
 
 {% block css %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='chat/chat.css') }}">
+{% endblock %}
+
+{% block js %}
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+
+        <script>
+        // Set global variables from Flask template data
+        const userId = "{{ user_id|default('')|safe }}";
+        const username =  "{{ username|default('Anonymous')|safe }}";
+        
+        // Make them available globally by attaching to window
+        window.userId = userId || 'user_' + Math.random().toString(36).substr(2, 9);
+        window.username = username || 'Anonymous';
+        
+    </script>
+
+    <script type="text/javascript" src="{{ url_for('static', filename='chat/chat.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -65,9 +82,19 @@
 
                     <!-- Form -->
                     <div class="card-footer bg-body-tertiary">
-                        <textarea class="form-control no-resize" rows="3" placeholder="Type your message"></textarea>
+                        <div class="input-group">
+                            <textarea class="form-control no-resize" 
+                                    id="messageInput" 
+                                    rows="2" 
+                                    placeholder="Type your message... Press Enter to send"></textarea>
+                            <button class="btn btn-primary" id="sendButton" type="button">
+                                <i data-feather="send"></i>
+                            </button>
+                        </div>
+                        <div class="small text-muted mt-1">
+                            <span id="typingIndicator" class="d-none">Someone is typing...</span>
+                        </div>
                     </div>
-
 
                 </div>
             </div>

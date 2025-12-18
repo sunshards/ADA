@@ -49,6 +49,9 @@ def create_app(test_config=None):
         from .creation import bp as creation_bp
         app.register_blueprint(creation_bp)
 
+        from .chat import bp as chat_bp
+        app.register_blueprint(chat_bp)
+
         from .selection import bp as selection_bp
         app.register_blueprint(selection_bp)
 
