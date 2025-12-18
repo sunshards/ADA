@@ -1530,7 +1530,8 @@ def main(id_or_monolith):
             monolith["long_term_memory"] = long_term_memory
             monolith["recent_history"] = recent_history
             monolith["turn_count"] = turn_count
-            save_monolith_to_db(monolith)
+            # save_monolith_to_db(monolith)    -> deprecated, we save character only
+            save_character(character)
             print("Goodbye!")
             break
 
@@ -1568,6 +1569,7 @@ def main(id_or_monolith):
                     input("Press Enter to continue...")
                 else:
                     print("\nGame Over! \n It was indeed dangerous to go alone, Zelda...") # I know it's Link, but c'mon... this is funnier
+                    # save_monolith_to_db(monolith)    -> deprecated, we save character only
                     save_character(character) # <--- Trigger save on quit
                     break
             
