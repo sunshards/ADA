@@ -15,37 +15,36 @@ chat_rooms = {}
 
 @bp.route('/')
 def chat():
-    # Get user from session (adjust based on your auth system)
     user_id = session.get('user_id')
-    user = current_app.db['Users'].find_one({"_id": ObjectId(user_id)})
-    username = user["Username"]
-    
-    # You might get avatar from database or session
-    # avatar = session.get('avatar', 'temp/avatar_animal_00001.png')
-    avatar='default'
-    # Get messages and players 
-    messages = []  # From database
-    players = []   # From database
-    
-    return render_template('chat/chat.html',
-                            user_id=user_id,
-                            username=username,
-                            avatar=avatar,
-                            messages=messages,
-                            players=players)
+    character_id = session.get('character_id')
+    return render_template('chat/chat.html', user_id=user_id, character_id=character_id)
 
 @socketio.on('connect')
 def handle_connect():
-    user_id = request.args.get('user_id') or 'anonymous'
-    username = request.args.get('username') or 'anonymous'
+    user_id = request.args.get('user_id')
+    character_id = request.args.get('character_id')
+
+    user = current_app.db['Users'].find_one({"_id": ObjectId(user_id)})
+    character = current_app.db['Characters'].find_one({"_id": ObjectId(character_id)})
+    
+    if (not user):
+        print("User not found in handle_connect")
+        return
+    if (not character):
+        print("Character not found in handle_connect")
+        return
+    username = user["Username"]
+    avatar = character["avatar_base64"]
     room = request.args.get('room', 'default')
     
     # Store connection info
     active_users[request.sid] = {
         'user_id': user_id,
+        'character_id' : character_id,
         'username': username,
         'room': room,
-        'avatar': 'default'
+        'avatar_base64': avatar,
+        'life_percentage' : 100
     }
     
     join_room(room)
@@ -53,10 +52,10 @@ def handle_connect():
     
     # Notify others in the room
     emit('user_joined', {
+        'timestamp': datetime.now().isoformat(),
+        'sid': request.sid,
         'user_id': user_id,
         'username': username,
-        'sid': request.sid,
-        'timestamp': datetime.now().isoformat(),
         'active_users' : active_users
     }, room=room, skip_sid=request.sid)
     
@@ -76,6 +75,7 @@ def handle_disconnect():
         
         # Notify others
         emit('user_left', {
+            'sid': request.sid,
             'user_id': user_data['user_id'],
             'username': user_data['username'],
             'timestamp': datetime.now().isoformat()
@@ -95,20 +95,16 @@ def handle_send_message(data):
     user_data = active_users[request.sid]
     room = user_data['room']
     
-    # Validate message
     message = data.get('message', '').strip()
     if not message:
         return
     
-    # Create message object
     message_obj = {
-        'id': str(uuid.uuid4()),
-        'user_id': user_data['user_id'],
-        'username': user_data['username'],
-        'avatar': user_data['avatar'],
+        'message_id': str(uuid.uuid4()),
         'message': message,
+        'sid': request.sid,
         'timestamp': datetime.now().isoformat(),
-        'type': 'incoming',  # For other users
+        'type': 'incoming', 
         'room': room
     }
     

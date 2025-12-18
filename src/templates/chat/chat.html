@@ -7,15 +7,10 @@
 {% block js %}
     <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 
-        <script>
-        // Set global variables from Flask template data
-        const userId = "{{ user_id|default('')|safe }}";
-        const username =  "{{ username|default('Anonymous')|safe }}";
-        
-        // Make them available globally by attaching to window
-        window.userId = userId || 'user_' + Math.random().toString(36).substr(2, 9);
-        window.username = username || 'Anonymous';
-        
+    <script>
+        // Set global variables from Flask template data by attaching to window
+        window.user_id = "{{ user_id|default('')|safe }}";
+        window.character_id = "{{ character_id|default('')|safe }}";
     </script>
 
     <script type="text/javascript" src="{{ url_for('static', filename='chat/chat.js') }}"></script>
@@ -48,7 +43,7 @@
                             <!-- Incoming Message -->
                             <div class="d-flex mb-3">
                                 <img
-                                src="{{ url_for('static', filename='temp/avatar_animal_00001.png') }}"
+                                src=""
                                 class="rounded-circle me-2" 
                                 width="40" 
                                 height="40" 
@@ -63,7 +58,7 @@
                             <!-- Outgoing Message -->
                             <div class="d-flex flex-row-reverse mb-3">
                                 <img
-                                src="{{ url_for('static', filename='temp/avatar_animal_00002.png') }}"
+                                src=""
                                 class="rounded-circle me-2" 
                                 width="40" 
                                 height="40" 

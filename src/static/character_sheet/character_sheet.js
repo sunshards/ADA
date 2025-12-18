@@ -43,9 +43,12 @@ submitButton.addEventListener('click', async() => {
     }
 
     const res = await fetch(uploadUrl, { method: 'POST', body: formData });
-    window.location.href = characterSelectURL;
-
     // read the response
     // const data = await res.json();
+    
+    // Redirect to character selection after creating character
+    window.location.href = characterSelectURL;
+
+
 })
 
