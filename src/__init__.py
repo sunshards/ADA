@@ -48,6 +48,9 @@ def create_app(test_config=None):
         from .creation import bp as creation_bp
         app.register_blueprint(creation_bp)
 
+        from .selection import bp as selection_bp
+        app.register_blueprint(selection_bp)
+
         app.add_url_rule('/', endpoint='landing')
 
     # @app.route('/test-db')
