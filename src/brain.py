@@ -8,6 +8,11 @@ import time
 import re
 import json
 import random
+from bson.objectid import ObjectId
+
+from flask import (
+    Blueprint, flash, g, redirect, render_template, request, url_for, current_app, session
+)
 
 from pathlib import Path
 
@@ -1249,6 +1254,30 @@ def execute_enemy_action(enemy, player, action_type, action_data):
 # TODO implement the level up system based on XP gained -> the cap to reach the next level increases by a factor of 2 every 10 levels (like in dnd)
 
 
+
+
+
+# Loads a character from the MongoDB 'Users' collection.
+# Note: Assuming the character itself is stored within the 'Characters' array 
+# of a User document, or you are searching for a user that matches this ID.
+def load_character(character_id_str):
+    try:
+        # Try finding it directly in the 'Characters' collection
+        char_doc = current_app.db['Characters'].find_one({"_id": ObjectId(character_id_str)})
+        if char_doc:
+            return char_doc
+
+        print(f"[ERROR] ID {character_id_str} not found in Users or Characters.")
+        return None
+    except Exception as e:
+        print(f"[ERROR] Lookup failed: {e}")
+        return None
+
+
+
+
+#!!! CHARACTER_ID should be set externally before running main()
+
 # --- Game Loop ---
 def main():
     # Python has to explicitly state that we are using the global variables (the serpent is cleraly not fit to be a C competitor :-P)
@@ -1257,13 +1286,26 @@ def main():
     global recent_history
     global mana_regen_per_turn
     global character
+    global CHARACTER_ID
     print("=== ADA TI DA' IL BENVENUTO ===")
-    print("\nDescribe your character in your own words (free text):")
-    user_desc = input("> ")
+    #    print("\nDescribe your character in your own words (free text):")
+    #    user_desc = input("> ")
 
-    character = create_character_from_description(user_desc)
-    print("\nYour character has been created:")
-    print(json.dumps(character, indent=2))
+    #    character = create_character_from_description(user_desc)
+    
+    # 1. Load the character from the database
+    character_data = load_character(CHARACTER_ID)
+    
+    if character_data:
+        character = character_data
+        # Ensure current_hp exists for the session
+        if "current_hp" not in character:
+            character["current_hp"] = character.get("max_hp", 50)
+            
+        print(f"\nYour character '{character['name']}' has been correctly loaded from the database.")
+    else:
+        print("\n[ERROR] No character found in database")
+
 
     state = {"location": "Taverna Iniziale", 
              "quest": "Nessuna"
