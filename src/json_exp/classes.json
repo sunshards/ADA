@@ -1,0 +1,8 @@
+[
+    {"name": "Warrior", "description": "A powerful melee combatant specialized in swords, axes, and heavy armor."},
+    {"name": "Mage", "description": "A glass cannon who wields arcane magic and elemental spells from a distance."},
+    {"name": "Rogue", "description": "A master of shadows and stealth, dealing high critical damage and dodging attacks."},
+    {"name": "Ranger", "description": "A survivalist and archer who uses bows and nature-based skills to track foes."},
+    {"name": "Paladin", "description": "A holy knight combining heavy physical defense with divine healing magic."},
+    {"name": "Cleric", "description": "A dedicated healer and supporter who uses holy light to mend wounds and buff allies."}
+]
