@@ -1,6 +1,6 @@
 [
   {
-    "id": "longbow",
+    "_id": "longbow",
     "name": "Longbow",
     "itemType": "weapon",
     "subType": "ranged",
@@ -18,7 +18,7 @@
   },
 
   {
-    "id": "shortsword",
+    "_id": "shortsword",
     "name": "Short Sword",
     "itemType": "weapon",
     "subType": "melee",
@@ -35,7 +35,7 @@
   },
 
   {
-    "id": "magicwand",
+    "_id": "magicwand",
     "name": "Magic Wand",
     "itemType": "magical",
     "subType": "wand",
@@ -44,12 +44,11 @@
   },
 
   {
-    "id": "healthpotion",
+    "_id": "healthpotion",
     "name": "Health Potion",
     "itemType": "consumable",
     "subType": "potion",
     "description": "Restores health when consumed",
-    "potionName": "Healing Potion",
     "effects": [
       {
         "kind": "heal",
@@ -59,5 +58,292 @@
         "value": "10"
       }
     ]
+  },
+  {
+    "_id": "ironlongbow",
+    "name": "Iron Longbow",
+    "itemType": "weapon",
+    "subType": "ranged",
+    "description": "A reinforced longbow with iron fittings, reliable and sturdy.",
+    "range": 30,
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "2d6+1"
+      }
+    ]
+  },
+  {
+    "_id": "hunterbow",
+    "name": "Hunter's Bow",
+    "itemType": "weapon",
+    "subType": "ranged",
+    "description": "A lightweight bow favored by hunters for quick shots.",
+    "range": 25,
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "2d6"
+      }
+    ]
+  },
+  {
+    "_id": "shortbow",
+    "name": "Short Bow",
+    "itemType": "weapon",
+    "subType": "ranged",
+    "description": "Compact bow, easy to handle in tight spaces.",
+    "range": 20,
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "1d10"
+      }
+    ]
+  },
+  {
+    "_id": "warbow",
+    "name": "War Bow",
+    "itemType": "weapon",
+    "subType": "ranged",
+    "description": "A heavy bow designed for battlefield use.",
+    "range": 35,
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "2d8"
+      }
+    ]
+  },
+  {
+    "_id": "trainingbow",
+    "name": "Training Bow",
+    "itemType": "weapon",
+    "subType": "ranged",
+    "description": "A simple bow used by novices and militias.",
+    "range": 20,
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "1d6"
+      }
+    ]
+  },
+  {
+    "_id": "steelsword",
+    "name": "Steel Sword",
+    "itemType": "weapon",
+    "subType": "melee",
+    "description": "A well-balanced steel blade used by seasoned fighters.",
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "1d10+1"
+      }
+    ]
+  },
+  {
+    "_id": "broadsword",
+    "name": "Broad Sword",
+    "itemType": "weapon",
+    "subType": "melee",
+    "description": "A w_ide blade capable of powerful slashes.",
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "1d12"
+      }
+    ]
+  },
+  {
+    "_id": "rustysword",
+    "name": "Rusty Sword",
+    "itemType": "weapon",
+    "subType": "melee",
+    "description": "An old, worn blade that has seen better days.",
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "1d6+1"
+      }
+    ]
+  },
+  {
+    "_id": "duelingsword",
+    "name": "Dueling Sword",
+    "itemType": "weapon",
+    "subType": "melee",
+    "description": "A slender blade designed for precision strikes.",
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "1d8+2"
+      }
+    ]
+  },
+  {
+    "_id": "guardsword",
+    "name": "Guard Sword",
+    "itemType": "weapon",
+    "subType": "melee",
+    "description": "Standard-issue sword carried by town guards.",
+    "effects": [
+      {
+        "kind": "damage",
+        "target": "enemy",
+        "element": "none",
+        "radius": 0,
+        "value": "1d8+1"
+      }
+    ]
+  },
+  {
+    "_id": "lesserhealingpotion",
+    "name": "Lesser Healing Potion",
+    "itemType": "consumable",
+    "subType": "potion",
+    "description": "A mild potion that restores a small amount of health.",
+    "effects": [
+      {
+        "kind": "heal",
+        "target": "self",
+        "element": "none",
+        "radius": 0,
+        "value": "5"
+      }
+    ]
+  },
+  {
+    "_id": "greaterhealingpotion",
+    "name": "Greater Healing Potion",
+    "itemType": "consumable",
+    "subType": "potion",
+    "description": "A potent potion brewed to quickly mend wounds.",
+    "effects": [
+      {
+        "kind": "heal",
+        "target": "self",
+        "element": "none",
+        "radius": 0,
+        "value": "20"
+      }
+    ]
+  },
+  {
+    "_id": "manapotion",
+    "name": "Mana Potion",
+    "itemType": "consumable",
+    "subType": "potion",
+    "description": "Restores magical energy to the drinker.",
+    "effects": [
+      {
+        "kind": "heal_mana",
+        "target": "self",
+        "element": "none",
+        "radius": 0,
+        "value": "10"
+      }
+    ]
+  },
+  {
+    "_id": "greatermanapotion",
+    "name": "Greater Mana Potion",
+    "itemType": "consumable",
+    "subType": "potion",
+    "description": "A refined potion that replenishes a large amount of mana.",
+    "effects": [
+      {
+        "kind": "heal_mana",
+        "target": "self",
+        "element": "none",
+        "radius": 0,
+        "value": "25"
+      }
+    ]
+  },
+  {
+    "_id": "elixirofrenewal",
+    "name": "Elixir of Renewal",
+    "itemType": "consumable",
+    "subType": "potion",
+    "description": "A rare potion that restores both body and mind.",
+    "effects": [
+      {
+        "kind": "heal_and_heal_mana",
+        "target": "self",
+        "element": "none",
+        "radius": 0,
+        "value": "15"
+      }
+    ]
+  },
+  {
+    "_id": "wandfirebolt",
+    "name": "Wand of Firebolt",
+    "itemType": "magical",
+    "subType": "wand",
+    "description": "A charred wand that stores a simple fire spell.",
+    "usages": 5
+  },
+  {
+    "_id": "wandfrost",
+    "name": "Wand of Frost",
+    "itemType": "magical",
+    "subType": "wand",
+    "description": "A cold-to-the-touch wand imbued with chilling magic.",
+    "usages": 4
+  },
+  {
+    "_id": "wandlight",
+    "name": "Wand of Light",
+    "itemType": "magical",
+    "subType": "wand",
+    "description": "A faintly glowing wand that releases a burst of light.",
+    "usages": 6
+  },
+  {
+    "_id": "wandarcane",
+    "name": "Wand of Arcane Pulse",
+    "itemType": "magical",
+    "subType": "wand",
+    "description": "A crystal-tipped wand that unleashes raw arcane energy.",
+    "usages": 3
+  },
+  {
+    "_id": "wandstorm",
+    "name": "Wand of Storm Sparks",
+    "itemType": "magical",
+    "subType": "wand",
+    "description": "A crackling wand that stores a minor lightning spell.",
+    "usages": 4
   }
+
+
 ]
