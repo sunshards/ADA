@@ -1692,24 +1692,24 @@ def main(character_id):
 #     main(test_character_id)
 
 
-if __name__ == "__main__":
-    from flask import Flask
-    from pymongo import MongoClient
+# if __name__ == "__main__":
+#     from flask import Flask
+#     from pymongo import MongoClient
 
-    def setup_app():
-        """Creates a minimal Flask app context and DB connection for standalone execution."""
-        app = Flask(__name__)
-        # Ensure CONNECTION_STRING is in the .env file
-        connection_string = os.getenv("CONNECTION_STRING")
-        client = MongoClient(connection_string)
-        app.db = client["ADADatabase"] 
-        return app
+#     def setup_app():
+#         """Creates a minimal Flask app context and DB connection for standalone execution."""
+#         app = Flask(__name__)
+#         # Ensure CONNECTION_STRING is in the .env file
+#         connection_string = os.getenv("CONNECTION_STRING")
+#         client = MongoClient(connection_string)
+#         app.db = client["ADADatabase"] 
+#         return app
 
-    app = setup_app()
-    with app.app_context():
-        # The same ID used in your successful test_db.py execution
-        test_character_id = '6943f1e9b2b9aad9d81bb75f'
-        main(test_character_id)
+#     app = setup_app()
+#     with app.app_context():
+#         # The same ID used in your successful test_db.py execution
+#         test_character_id = '6943f1e9b2b9aad9d81bb75f'
+#         main(test_character_id)
 
 # # Track encountered NPCs --> talk to other members of the group about this feature
 #This shoud be taken from the database in a real implementation 
