@@ -6,18 +6,20 @@ import json
 from bson.objectid import ObjectId
 from src import socketio
 from datetime import datetime
-bp = Blueprint('chat', __name__, url_prefix='/chat')
 import uuid
 
-# In-memory storage for demo (use database in production)
-active_users = {}
-chat_rooms = {}
+from src.brain import main_modular
 
 #TODO
 # refactor with classes: es. message_obj should be class Message with get method that returns the object...
 # safe for active_users there should be a User class
 # in general you're relying too much on objects that don't have a defined structure and this will bite back
 
+bp = Blueprint('chat', __name__, url_prefix='/chat')
+
+# In-memory storage for demo (use database in production)
+active_users = {}
+chat_rooms = {}
 
 class Message:
     def __init__(self, text, type, room, sid=None):
@@ -137,6 +139,11 @@ def handle_send_message(data):
     sender_message['type'] = 'outgoing'
     emit('message_sent', sender_message)
 
+    # Generate ADA response to input and send
+    responses = generate_response(message.text, user_data["character_id"])
+    for response in responses:
+        server_send_message(text=response, room='default')
+
 @socketio.on('typing')
 def handle_typing(data):
     """Handle typing indicators"""
@@ -181,7 +188,9 @@ def server_send_message(text: str, room):
     # Save to database here in the future
     
     emit('new_message', message_obj, room=room)
-    
+
+def generate_response(user_input, character_id):
+    return main_modular(character_id=character_id, user_input=user_input)
 
 # def get_users_in_room(room):
 #     """Get list of users in a room"""
