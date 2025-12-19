@@ -1299,22 +1299,47 @@ def save_character(character_data):
 
 def main_modular(character_id, user_input):
     global long_term_memory, turn_count, recent_history, character, state
-    
-    output_buffer = []  # All strings to be displayed this turn
 
-    # 1. Load Character (if first turn)
+    state.setdefault("in_combat", False)
+    state.setdefault("combat_enemies", None)
+
+    output_buffer = []
+
+    #! ================= LOAD CHARACTER =================
     if turn_count == 0:
         character_data = load_character(character_id)
-        if character_data:
-            character = character_data
-            character.setdefault("current_hp", character.get("max_hp", 50))
-            output_buffer.append(f"Character '{character['name']}' loaded successfully.")
-        else:
+        if not character_data:
             return ["[ERROR] Character not found."]
 
-    # 2. Process Input
+        character = character_data
+        character.setdefault("current_hp", character.get("max_hp", 50))
+        output_buffer.append(f"Character '{character['name']}' loaded successfully.")
+
+    #! ================= COMBAT TURN =================
+    if state["in_combat"]:
+        is_finished, victory, logs = combat_loop_modular(
+            character,
+            state["combat_enemies"],
+            ITEMS_DB,
+            user_input,
+            state
+        )
+
+        output_buffer.extend(logs)
+
+        if is_finished:
+            state["in_combat"] = False
+            state["combat_enemies"] = None
+
+            if not victory:
+                output_buffer.append("Game Over.")
+            return output_buffer
+
+        return output_buffer
+
+    #! ================= NORMAL WORLD TURN =================
     recent_history.append({"role": "user", "content": user_input})
-    
+
     history = [
         system_rules,
         alignment_prompt,
@@ -1325,37 +1350,44 @@ def main_modular(character_id, user_input):
 
     try:
         data = narrate_strict(history)
-        recent_history.append({"role": "assistant", "content": data["narration"]})
+        recent_history.append({"role": "assistant", "content": data.get("narration", "")
+})
         turn_count += 1
 
-        # 3. Check for Combat (Random or Forced)
-        is_safe_zone = state["location"].lower() in ["tavern", "town", "city", "shop", "taverna iniziale"]
-        random_trigger = (random.random() < 0.2 and not is_safe_zone)
-        
+        #! ================= COMBAT CHECK =================
+        is_safe_zone = state["location"].lower() in [
+            "tavern", "town", "city", "shop", "taverna iniziale"
+        ]
+        random_trigger = random.random() < 0.2 and not is_safe_zone
+
         if data.get("encounter") or random_trigger:
             output_buffer.append("\n[ALERT] Combat Initiated!")
-            enemies = spawn_enemy(state["location"].lower(), character["level"])
-            
-            # Run modular combat
-            victory, logs = combat_loop_modular(character, enemies, ITEMS_DB, state)
-            output_buffer.extend(logs) # Merge combat logs into main buffer
-            
-            if not victory:
-                output_buffer.append("\nGame Over! It was indeed dangerous to go alone...")
-                return output_buffer
 
-        # 4. Update World State & Inventory
+            enemies = spawn_enemy(state["location"].lower(), character["level"])
+            state["in_combat"] = True
+            state["combat_enemies"] = enemies
+
+            is_finished, victory, logs = combat_loop_modular(
+                character, enemies, ITEMS_DB, "", state
+            )
+
+            output_buffer.extend(logs)
+            return output_buffer
+
+        #! ================= WORLD UPDATES =================
         character["gold"] = update_stat(character["gold"], data.get("gold_change", 0))
         character["xp"] = update_stat(character["xp"], data.get("xp_gained", 0))
-        
+
         for item in data.get("found_items", []):
             character["inventory"].append(item)
             output_buffer.append(f"[ITEM FOUND] {item}")
 
-        if "location" in data: state["location"] = data["location"]
-        if "quest" in data: state["quest"] = data["quest"]
+        if "location" in data:
+            state["location"] = data["location"]
+        if "quest" in data:
+            state["quest"] = data["quest"]
 
-        # 5. Build Status Header
+        #! ================= UI =================
         status_ui = (
             f"\n{'-'*20}\n"
             f"LOC: {state['location']} | HP: {character['current_hp']}/{character['max_hp']}\n"
@@ -1364,10 +1396,10 @@ def main_modular(character_id, user_input):
         )
         output_buffer.append(status_ui)
 
-        # 6. Final Narration
-        output_buffer.append(data["narration"])
+        if data.get("narration"):
+            output_buffer.append(data["narration"])
 
-        # 7. Memory Maintenance
+
         if turn_count % 10 == 0:
             output_buffer.append("[SYSTEM] Ada is condensing memories...")
             long_term_memory = summarise_memory(long_term_memory, recent_history)
@@ -1378,125 +1410,138 @@ def main_modular(character_id, user_input):
     return output_buffer
 
 
+
 def combat_loop_modular(player, enemies, items, user_input, state):
     """
-    Processes one round of combat based on user_input.
-    Returns: (is_finished, victory_bool, message_list)
+    Processes ONE combat turn.
+    Returns: (is_finished, victory_or_none, message_list)
     """
+
+    if not user_input:
+        return False, None, ["Combat begins! What will you do?"]
+
     combat_log = []
-    
-    # 1. Initialize logic (if this is the very first encounter turn)
-    # This assumes 'enemies' is persisted in the session/state across turns
+
     alive_enemies = [e for e in enemies if e["current_hp"] > 0]
-    
+
     if not alive_enemies:
-        return True, True, ["The battlefield is already empty."]
+        return True, True, ["The battlefield is silent. No enemies remain."]
 
-    # Track current target in player's state/temp data
-    current_target_idx = player.get("_combat_target_idx", 0)
-    if current_target_idx >= len(alive_enemies):
-        current_target_idx = 0
-    
-    current_enemy = alive_enemies[current_target_idx]
+    target_idx = player.get("_combat_target_idx", 0)
+    if target_idx >= len(alive_enemies):
+        target_idx = 0
+    player["_combat_target_idx"] = target_idx
 
-    #! ================= 1. PLAYER TURN PROCESSING =================
-    
-    # Check for target switching
+    current_enemy = alive_enemies[target_idx]
+
+    #! ================= PLAYER TURN =================
     if user_input.lower().startswith("target "):
         try:
-            target_num = int(user_input.split()[1])
-            if 1 <= target_num <= len(alive_enemies):
-                player["_combat_target_idx"] = target_num - 1
-                combat_log.append(f"Switched target to {alive_enemies[target_num-1]['name']}")
-                return False, False, combat_log
+            idx = int(user_input.split()[1]) - 1
+            if 0 <= idx < len(alive_enemies):
+                player["_combat_target_idx"] = idx
+                return False, None, [f"Target switched to {alive_enemies[idx]['name']}."]
         except:
-            combat_log.append("Invalid target. Use 'target X'.")
+            pass
+        return False, None, ["Invalid target command."]
 
-    # Get action from AI (Uses the user's narration to pick: attack, skill, item, etc)
     action = get_action_from_ai(user_input, player)
-    
-    # Selection cleanup
+
     selected_skill = player.pop("_selected_skill", None)
     selected_item = player.pop("_selected_item", None)
-    
-    combat_text_parts = []
+
+    turn_text = []
 
     if action == "attack":
-        weapon_item = get_item_by_name(player["equipped_weapon"], items)
-        result = combat_attack(player, current_enemy, weapon_item=weapon_item)
-        combat_text_parts.append(f"You attack {current_enemy['name']} with {player['equipped_weapon']} for {result['damage']} damage.")
-        if result["weapon_rolls"]:
-            combat_text_parts.append(f"Rolls: {result['weapon_rolls']}")
+        weapon = get_item_by_name(player["equipped_weapon"], items)
+        result = combat_attack(player, current_enemy, weapon_item=weapon)
+        turn_text.append(
+            f"You hit {current_enemy['name']} for {result['damage']} damage."
+        )
 
     elif action == "use skill" and selected_skill:
         skill = get_skill_by_name(selected_skill, SKILLS_DB)
-        weapon_item = get_item_by_name(player["equipped_weapon"], items)
-        
-        # Wand Logic
-        is_wand = weapon_item and weapon_item.get("subType") == "wand" and weapon_item.get("usages", 0) > 0
-        if is_wand:
-            weapon_item["usages"] -= 1
-            combat_text_parts.append(f"You channel {skill['name']} through your wand ({weapon_item['usages']} left).")
+        weapon = get_item_by_name(player["equipped_weapon"], items)
+
+        if weapon and weapon.get("subType") == "wand" and weapon.get("usages", 0) > 0:
+            weapon["usages"] -= 1
             skill["_cast_via_wand"] = True
-        
+
         result = combat_attack(player, current_enemy, skill=skill)
-        combat_text_parts.append(f"You cast {skill['name']}! {current_enemy['name']} takes {result['damage']} damage.")
+        turn_text.append(
+            f"{skill['name']} deals {result['damage']} damage to {current_enemy['name']}."
+        )
         skill.pop("_cast_via_wand", None)
 
     elif action == "use item" and selected_item:
-        success, msg = use_item(player, selected_item, items)
-        combat_text_parts.append(msg)
+        _, msg = use_item(player, selected_item, items)
+        turn_text.append(msg)
 
     elif action == "run":
         roll = roll_d20() + stat_modifier(player["stats"]["DEX"])
         if roll >= 15:
-            return True, True, ["You successfully escaped from combat!"]
-        combat_text_parts.append("You try to run but fail to escape!")
+            return True, True, ["You escape from combat!"]
+        turn_text.append("You fail to escape!")
 
-    # Check if current enemy died
     if current_enemy["current_hp"] <= 0:
-        combat_text_parts.append(f"**{current_enemy['name']} has been defeated!**")
-        alive_enemies.pop(current_target_idx)
-        player["_combat_target_idx"] = 0 # Reset target
+        turn_text.append(f"{current_enemy['name']} is defeated!")
+        player["_combat_target_idx"] = 0
 
-    #! ================= 2. ENEMY TURNS =================
-    if alive_enemies and player["current_hp"] > 0:
-        for enemy in alive_enemies:
-            action_type, action_data = enemy_choose_action(enemy, player)
-            result = execute_enemy_action(enemy, player, action_type, action_data)
-            combat_text_parts.append(f"{enemy['name']}: {result['message']}")
+    #! ================= ENEMY TURNS =================
+    alive_enemies = [e for e in enemies if e["current_hp"] > 0]
 
-    #! ================= 3. NARRATION & FINALIZE =================
-    raw_combat_summary = "\n".join(combat_text_parts)
-    
-    # Get flavor narration from AI
-    narration = narrate_flavor(f"Player HP: {player['current_hp']}/{player['max_hp']}\n{raw_combat_summary}")
+    for enemy in alive_enemies:
+        action_type, action_data = enemy_choose_action(enemy, player)
+        result = execute_enemy_action(enemy, player, action_type, action_data)
+        turn_text.append(f"{enemy['name']}: {result['message']}")
+
+    #! ================= AI NARRATION =================
+    # Fetch location and ingect into the narration
+    location = state.get("location", "Unknown Location")
+    narration = narrate_flavor(
+        f"""
+    Location: {location}
+
+    Player HP: {player['current_hp']}/{player['max_hp']}
+
+    Combat scene:
+    {chr(10).join(turn_text)}
+
+    IMPORTANT:
+    - Describe the fight taking place in the specified location.
+    - Do NOT invent forests, dungeons, or outdoor settings unless stated.
+    """
+    )
+
     combat_log.append(narration)
 
-    # Check Win/Loss conditions
     if player["current_hp"] <= 0:
-        combat_log.append("You have been defeated...")
-        return True, False, combat_log
+        return True, False, combat_log + ["You have been defeated."]
 
-    if not alive_enemies:
-        # Calculate Rewards
-        total_xp = sum([e.get("cr", 1) * 10 for e in enemies])
+    if not [e for e in enemies if e["current_hp"] > 0]:
+        total_xp = sum(e.get("cr", 1) * 10 for e in enemies)
         player["xp"] = update_stat(player["xp"], total_xp)
-        combat_log.append(f"Victory! You gained {total_xp} XP.")
-        
-        # Level Up Logic
-        if player["xp"] >= (player["level"] + 1) * 100:
-            player["level"] += 1
-            player["max_hp"] += 10
-            player["current_hp"] = player["max_hp"]
-            combat_log.append(f"LEVEL UP! You are now level {player['level']}!")
-            
+        combat_log.append(f"Victory! You gain {total_xp} XP.")
         return True, True, combat_log
 
-    # Return ongoing status
-    status_msg = f"--- [Status] HP: {player['current_hp']} | Enemies Left: {len(alive_enemies)} ---"
-    combat_log.insert(0, status_msg)
-    return False, False, combat_log
+    enemy = alive_enemies[0] if alive_enemies else None
+
+    if enemy:
+        combat_log.insert(
+            0,
+            f"[STATUS] HP {player['current_hp']} | "
+            f"{enemy['name']} HP: {enemy['current_hp']}/{enemy['max_hp']} | "
+            f"Enemies left: {len(alive_enemies)}"
+        )
+    else:
+        combat_log.insert(
+            0,
+            f"[STATUS] HP {player['current_hp']} | Enemies left: 0"
+        )
+
+    return False, None, combat_log
+
+
 
 
 
@@ -1578,7 +1623,9 @@ def main(character_id):
         try:
             data = narrate_strict(history)
 
-            recent_history.append({"role": "assistant", "content": data["narration"]})
+            if "narration" in data:
+                recent_history.append({"role": "assistant", "content": data["narration"]})
+
             turn_count += 1
 
             #! ================= RANDOM ENCOUNTER LOGIC =================
