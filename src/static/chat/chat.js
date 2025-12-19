@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function handleLoading() {
         loadingMessage.classList.remove('d-none')
+        scrollToBottom()
     }
     
     function handleCompletedLoading() {
