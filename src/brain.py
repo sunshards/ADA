@@ -1389,10 +1389,8 @@ def main_modular(character_id, user_input):
 
         #! ================= UI =================
         status_ui = (
-            f"\n{'-'*20}\n"
             f"LOC: {state['location']} | HP: {character['current_hp']}/{character['max_hp']}\n"
             f"GOLD: {character['gold']} | XP: {character['xp']}\n"
-            f"{'-'*20}"
         )
         output_buffer.append(status_ui)
 
