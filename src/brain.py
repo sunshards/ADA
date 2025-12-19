@@ -113,7 +113,7 @@ recent_history = []
 #! Make sure to change the start point, so you can get the places from the approved database
 long_term_memory = "The character is located in the Initial Tavern. No relevant events so far."
 mana_regen_per_turn = 5  # Adjust regeneration rate if desired
-
+state = {"location": "Taverna Iniziale", "quest": "Nessuna"}
 
 # 3 tries for models distanced by a 2 second delay each one then fallback to the next one
 def narrate(history, retries=3, delay=2):
