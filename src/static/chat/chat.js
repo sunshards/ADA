@@ -6,6 +6,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const messageTextarea = document.querySelector('textarea.form-control');
     const sendButton = document.getElementById('sendButton');
 
+    // Hidden at start
+    const loadingMessage = document.getElementById('loading-message')
+    loading = false
+
     let socket = null;
     let currentUser = null;
     let currentRoom = 'default';
@@ -65,6 +69,8 @@ document.addEventListener('DOMContentLoaded', function() {
         socket.on('user_left', handleUserLeft);
         socket.on('user_typing', handleUserTyping);
         socket.on('room_joined', handleRoomJoined);
+        socket.on('generating_answer', handleLoading)
+        socket.on('generated_answer', handleCompletedLoading)
     }
 
     function setupEventListeners() {
@@ -90,6 +96,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 emitTyping(false);
             }
         });
+    }
+
+    function handleLoading() {
+        loadingMessage.classList.remove('d-none')
+    }
+    
+    function handleCompletedLoading() {
+        loadingMessage.classList.add('d-none')
     }
 
     function handleSocketConnect() {

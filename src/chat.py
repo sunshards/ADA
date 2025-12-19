@@ -138,6 +138,7 @@ def handle_send_message(data):
     sender_message = message_obj.copy()
     sender_message['type'] = 'outgoing'
     emit('message_sent', sender_message)
+    emit('generating_answer', {})
 
     # This forces the server to actually send the data above to the browser 
     # BEFORE starting the heavy AI logic.
@@ -147,6 +148,8 @@ def handle_send_message(data):
     responses = generate_response(message.text, user_data["character_id"])
     for response in responses:
         server_send_message(text=response, room='default')
+    emit('generated_answer', {})
+
 
 @socketio.on('typing')
 def handle_typing(data):
