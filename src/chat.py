@@ -139,6 +139,10 @@ def handle_send_message(data):
     sender_message['type'] = 'outgoing'
     emit('message_sent', sender_message)
 
+    # This forces the server to actually send the data above to the browser 
+    # BEFORE starting the heavy AI logic.
+    socketio.sleep(0.01)
+
     # Generate ADA response to input and send
     responses = generate_response(message.text, user_data["character_id"])
     for response in responses:

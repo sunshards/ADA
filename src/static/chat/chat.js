@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function sendMessage() {
         const message = messageTextarea.value.trim();
-        
+
         if (!message) {
             return;
         }
@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         messageTextarea.value = '';
-        
+
         // Clear typing indicator
         emitTyping(false);
         
