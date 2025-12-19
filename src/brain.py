@@ -220,6 +220,7 @@ def update_stat(current, change, min_val=0, max_val=9999):
     return max(min_val, min(max_val, current + change))
 
 # Use the AI to generate a full character sheet JSON based on a free-text description.
+# TODO: change the autput form stirngname to the id of the skill/item/class from the database
 def create_character_from_description(description: str) -> dict:
     # Load the approved skills from skill.json
     with open(skill_path, "r", encoding="utf-8") as f:
