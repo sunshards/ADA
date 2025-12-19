@@ -13,6 +13,32 @@ import uuid
 active_users = {}
 chat_rooms = {}
 
+#TODO
+# refactor with classes: es. message_obj should be class Message with get method that returns the object...
+# safe for active_users there should be a User class
+# in general you're relying too much on objects that don't have a defined structure and this will bite back
+
+
+class Message:
+    def __init__(self, text, sid, type, room):
+        self.message_id = str(uuid.uuid4())
+        self.timestamp = datetime.now().isoformat()
+        self.sid = sid
+        self.text = text
+        self.type = type
+        self.room = room
+    
+    def getJSON(self):
+        return {
+            'message_id': self.message_id,
+            'message': self.text,
+            'sid': self.sid,
+            'timestamp': self.timestamp,
+            'type': self.type,
+            'room': self.room
+        }
+
+
 @bp.route('/')
 def chat():
     user_id = session.get('user_id')
@@ -97,14 +123,8 @@ def handle_send_message(data):
     if not message:
         return
     
-    message_obj = {
-        'message_id': str(uuid.uuid4()),
-        'message': message,
-        'sid': request.sid,
-        'timestamp': datetime.now().isoformat(),
-        'type': 'incoming', 
-        'room': room
-    }
+    message = Message(text=message, sid=request.sid, type='incoming', room=room)
+    message_obj = message.getJSON()
     
     # Save to database here in the future
     
