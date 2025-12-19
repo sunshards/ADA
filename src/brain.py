@@ -343,62 +343,36 @@ def create_character_from_description(description: str) -> dict:
 
     # --- Assign inventory (weapon/item) based on similarity ---
     #? We dont ask the ai to suggest anything, we use the characher description to find the closest item that fits
-    usable_items = []
-    for i in items_db:
-        if i["itemType"] in ("weapon", "magical", "consumable"):
-            usable_items.append(i)
+    # 1. Filter the database for strictly weapons or magical items for the primary slot
+    combat_items = [i for i in items_db if i["itemType"] in ("weapon", "magical")]
     
-    # Find the most similar item to the character description
-    best_item, similarity = find_most_similar_item(character["description"], usable_items)
-    # Similarity score (not used here, but could be logged) 
-    # #! TBH: we have to decide if we use it or not (could be used to invent the weapon if the similarity is too low)
+    # 2. Filter for consumables or other non-combat items for the utility slots
+    utility_items_pool = [i for i in items_db if i["itemType"] not in ("weapon", "magical")]
 
-    # Start inventory with the most similar item
-    inventory = [best_item["name"]]
+    # Find the best combat item to equip
+    if combat_items:
+        best_weapon, _ = find_most_similar_item(character["description"], combat_items)
+        inventory = [best_weapon["name"]]
+        character["equipped_weapon"] = best_weapon["name"]
+    else:
+        # Hard fallback if JSON is empty or broken
+        inventory = ["Short Sword"]
+        character["equipped_weapon"] = "Short Sword"
 
-    # Scan description for extra items (max 3 non-weapons)
+    # 3. Choose exactly 3 non-weapon/non-magical items
     extra_items_added = 0
     MAX_EXTRA_ITEMS = 3
 
-    # Separate usable items into weapons and non-weapons
-    all_non_weapon_items = []
-    for item in usable_items:
-        if item["itemType"] == "weapon":
-            continue  # skip weapons
-        if item["name"] == best_item["name"]:
-            continue  # skip the already selected best item
-        all_non_weapon_items.append(item)
-
-    non_weapon_items = all_non_weapon_items
-
-    while extra_items_added < MAX_EXTRA_ITEMS and non_weapon_items:
-        # Find the most similar consumable to the character description
-        next_item, sim = find_most_similar_item(character["description"], non_weapon_items)
+    while extra_items_added < MAX_EXTRA_ITEMS and utility_items_pool:
+        # Find the most similar utility item to the character description
+        next_item, _ = find_most_similar_item(character["description"], utility_items_pool)
         inventory.append(next_item["name"])
         extra_items_added += 1
-        # Remove it from the pool to avoid duplicates
-        non_weapon_items.remove(next_item)
+        
+        # Remove selected item from the pool to avoid duplicates
+        utility_items_pool.remove(next_item)
 
     character["inventory"] = inventory
-
-    if best_item["itemType"] in ("weapon", "magical"):
-        character["equipped_weapon"] = best_item["name"]
-    else:
-        # Try to equip the first weapon in inventory
-        for item_name in inventory:
-            item = None  # default if not found
-            for i in items_db:
-                if i["name"] == item_name:
-                    item = i
-                    break  # stop at the first match
-
-            if item and item["itemType"] == "weapon":
-                character["equipped_weapon"] = item_name
-                break
-        else: 
-            print(f"[ERROR] Failed to select a matching weapon to the description")
-            character["inventory"] = "Short Sword"
-            character["equipped_weapon"] = "Short Sword"
 
     # ----------------------------------------------------------
 
