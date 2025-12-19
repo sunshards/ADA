@@ -21,6 +21,7 @@ json_path = BASE_DIR / "json_exp"
 skill_path = json_path / "skill.json"
 item_path = json_path / "item.json"
 enemy_path = json_path / "enemies.json"
+class_path = json_path / "classes.json"
 
 # Load the .env file -> so it takes the api key (remember to create it)
 load_dotenv()
@@ -228,6 +229,9 @@ def create_character_from_description(description: str) -> dict:
     
     skill_options = [f"- {s['name']} (Type: {s['type']}, Min Level: {s['min_lv']}): {s['description']}" for s in skills_db]
     available_skills_text = "\n".join(skill_options)
+
+    class_options = [f"- {c['name']}: {c['description']}" for c in classes]
+    available_classes_text = "\n".join(class_options)
     
 
     prompt = [
@@ -238,6 +242,9 @@ def create_character_from_description(description: str) -> dict:
 
         **AVAILABLE SKILLS (CHOOSE ONE FROM THESE ONLY):**
         {available_skills_text}
+
+        **AVAILABLE CLASSES (CHOOSE ONE FROM THESE ONLY):**
+        {available_classes_text}
 
         Include the following fields:
         - name
@@ -397,13 +404,15 @@ def create_character_from_description(description: str) -> dict:
 
     # TODO: when we add the classes database, do as above
     # If equipped_weapon is not present in the weapon list, find the most similar one.
-    #                                       V <- this is the name of a element of the list: used in the loop to create a list of weapon names
-    if character["class"] not in [c["name"] for c in classes]:
-        result = find_most_similar_item(character["class"], classes)
-        most_similar = result[0]  # <-- Dictionary of the most similar weapon
-        similarity = result[1]    # <-- Similarity score (not used here, but could be logged) #! TBH: we have to decide if we use it or not (could be used to invent the weapon if the similarity is too low)
-        character["class"] = most_similar["name"]
+    #                       V <- this is the name of a element of the list: used in the loop to create a list of weapon names
+    existing_class_names = [c["name"] for c in classes]
     
+    if character["class"] not in existing_class_names:
+        # Find the closest match from your JSON (e.g., "Mage" if AI said "Wizard")
+        most_similar_class, similarity = find_most_similar_item(character["class"], classes)
+        character["class"] = most_similar_class["name"]
+        print(f"[SYSTEM] AI suggested '{character['class']}', mapped to approved class: '{most_similar_class['name']}'")
+
     # Current HP for combat tracking
     character["current_hp"] = character["max_hp"]
 
@@ -434,12 +443,7 @@ def find_most_similar_item(description, items):
 
 # Example of approved classes (obviously this should be taken from the database)
 #? OR we shoud just create a local classes file
-classes = [
-    {"name": "Warrior", "description": "Strong melee fighter, excels in physical combat."},
-    {"name": "Mage", "description": "Master of magical arts, uses spells to attack and defend."},
-    {"name": "Rogue", "description": "Stealthy and agile, skilled in ranged attacks and evasion."},
-    {"name": "ranger", "description": "Expert in ranged combat and survival skills."}
-]
+
 
 
 # TODO
@@ -845,6 +849,9 @@ with open(skill_path, "r", encoding="utf-8") as f:
 
 with open(item_path, "r", encoding="utf-8") as f:
     ITEMS_DB = json.load(f)
+
+with open(class_path, "r", encoding="utf-8") as f:
+    classes = json.load(f)
 
 try:
     with open(enemy_path, "r", encoding="utf-8") as f:
@@ -1320,10 +1327,10 @@ def main(character_id):
     global character
    
     print("=== ADA TI DA' IL BENVENUTO ===")
-    #    print("\nDescribe your character in your own words (free text):")
-    #    user_desc = input("> ")
+    # print("\nDescribe your character in your own words (free text):")
+    # user_desc = input("> ")
 
-    #    character = create_character_from_description(user_desc)
+    # character = create_character_from_description(user_desc)
     
     # 1. Load the character from the database
     character_data = load_character(character_id)
