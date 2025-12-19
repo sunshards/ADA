@@ -20,7 +20,7 @@ chat_rooms = {}
 
 
 class Message:
-    def __init__(self, text, sid, type, room):
+    def __init__(self, text, type, room, sid=None):
         self.message_id = str(uuid.uuid4())
         self.timestamp = datetime.now().isoformat()
         self.sid = sid
@@ -38,6 +38,7 @@ class Message:
             'room': self.room
         }
 
+SERVER_SID = 'SERVER_SID'
 
 @bp.route('/')
 def chat():
@@ -173,6 +174,14 @@ def handle_join_room(data):
         'user_id': user_id,
         'message': f'Joined room: {room}'
     })
+
+def server_send_message(text: str, room):
+    message = Message(text=text, type='server', room=room, sid=SERVER_SID)
+    message_obj = message.getJSON()
+    # Save to database here in the future
+    
+    emit('new_message', message_obj, room=room)
+    
 
 # def get_users_in_room(room):
 #     """Get list of users in a room"""
