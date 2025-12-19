@@ -173,7 +173,7 @@
                 <h3>Skills</h3>
                 <ul class="list-group list-group-item-primary">
                     {% for name in character["skills"] %}
-                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="placeholder desc">
+                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{skills_descriptions[name]}}">
                             {{name}}
                         </li>
                     {% endfor %}
@@ -188,7 +188,7 @@
                 <h3>Items</h3>
                 <ul class="list-group list-group-item-primary">
                     {% for item in character["inventory"] %}
-                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="temp description"">
+                        <li class="list-group-item" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{items_descriptions[item]}}"">
                             {{item}}
                         </li>
                     {% endfor %}

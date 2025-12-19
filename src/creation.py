@@ -30,8 +30,39 @@ def creation():
             character_json = character.test_character_json
         
     #character = character.Character(json=character_json)
+    
+    # Retrieve item descriptions from the database
+    try:
+        item_col = current_app.db['Items']
+        items_descriptions = {}
+        for item in character_json.get('inventory', []):
+            item_data = item_col.find_one({"name": item})
+            if item_data and 'description' in item_data:
+                items_descriptions[item] = item_data['description']
+            else:
+                items_descriptions[item] = "No description available."
+    except Exception as e:
+        # print(f"Error retrieving item descriptions: {str(e)}")
+        items_descriptions = {item: "No description available." for item in character_json.get('inventory', [])}
 
-    return render_template('character_sheet/character_sheet.html', character=character_json)
+
+    # Retrieve skills descriptions from the database
+    try:
+        skill_col = current_app.db['Skills']
+        skills_descriptions = {}
+        for skill in character_json.get('skills', []):
+            skills_data = skill_col.find_one({"name": skill})
+            print("skills_data: ", skills_data)
+            if skills_data and 'description' in skills_data:
+                skills_descriptions[skill] = skills_data['description']
+            else:
+                skills_descriptions[skill] = "No description available."
+    except Exception as e:
+        # print(f"Error retrieving skills descriptions: {str(e)}")
+        skills_descriptions = {skill: "No description available." for skill in character_json.get('skills', [])}
+
+
+    return render_template('character_sheet/character_sheet.html', character=character_json, items_descriptions=items_descriptions, skills_descriptions=skills_descriptions)
 
 @bp.route('/upload', methods=['POST'])
 def upload():
