@@ -8,6 +8,8 @@ from src import socketio
 from datetime import datetime
 import uuid
 
+from src.brain import main_modular
+
 #TODO
 # refactor with classes: es. message_obj should be class Message with get method that returns the object...
 # safe for active_users there should be a User class
@@ -138,8 +140,9 @@ def handle_send_message(data):
     emit('message_sent', sender_message)
 
     # Generate ADA response to input and send
-    response = generate_response(message.text)
-    server_send_message(text=response, room='default')
+    responses = generate_response(message.text, user_data["character_id"])
+    for response in responses:
+        server_send_message(text=response, room='default')
 
 @socketio.on('typing')
 def handle_typing(data):
@@ -186,8 +189,8 @@ def server_send_message(text: str, room):
     
     emit('new_message', message_obj, room=room)
 
-def generate_response(user_input):
-    return user_input
+def generate_response(user_input, character_id):
+    return main_modular(character_id=character_id, user_input=user_input)
 
 # def get_users_in_room(room):
 #     """Get list of users in a room"""
