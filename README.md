@@ -55,6 +55,32 @@ ADA ensures the game remains fair and consistent for all players:
 
 ---
 
+## System Architecture
+
+ADA uses a **Hybrid Logic System** that separates narrative flavor from game mechanics. This ensures that while the AI describes the world, the Python backend strictly enforces rules, stats, and inventory management.
+
+### The Game Loop
+The core loop, driven by the `narrate_strict` function, ensures synchronization between the user, the database, and the AI model.
+
+<img width="500"  alt="Screenshot From 2026-02-04 16-47-10" src="https://github.com/user-attachments/assets/204a0b7d-a5a8-424b-a521-7c65c6d53d66" />
+
+
+1.  **Context Assembly:** Before every turn, the system fetches valid **Item** and **Skill** names from MongoDB. This list is injected into the AI's system prompt to prevent it from inventing non-existent items.
+2.  **Generation:** The AI generates a response containing both narrative text and a hidden JSON block.
+3.  **State Update:** The backend parses the JSON to update HP, XP, Gold, and Inventory *before* showing the text to the player.
+
+### Anti-Hallucination Logic
+To prevent the AI from "breaking" the game (e.g., granting infinite gold or invalid items), we utilize a rigid validation pipeline.
+
+<img width="500"  alt="Dropped Image" src="https://github.com/user-attachments/assets/f6476965-1023-4f12-857e-170bd0d5fd6f" />
+
+
+* **Regex Stripping:** The system uses `re.search(r'\{.*\}')` to extract *only* the JSON object from the AI's raw response, discarding any conversational fluff.
+* **Self-Healing:** If the AI produces malformed JSON, the system automatically triggers a "Repair" prompt, asking the model to fix syntax errors without altering the game state.
+* **Database Grounding:** Actions are cross-referenced against the `Items` and `Skills` collections in the database. If an item doesn't exist in the DB, it cannot be added to the inventory.
+
+---
+
 ## Getting Started
 
 ### Prerequisites
