@@ -71,6 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
         socket.on('room_joined', handleRoomJoined);
         socket.on('generating_answer', handleLoading)
         socket.on('generated_answer', handleCompletedLoading)
+        socket.on('combat_update', handleCombatUpdate);
     }
 
     function setupEventListeners() {
@@ -392,6 +393,75 @@ document.addEventListener('DOMContentLoaded', function() {
     function removeActivePlayer(sid_to_remove) {
         active_users.remove(sid_to_remove)
         refreshPlayerCards(Object.keys(active_users)) 
+    }
+
+    function handleCombatUpdate(data) {
+        // --- 1. Update Player Health (The "Blood") ---
+        if (data.player_hp !== undefined && data.player_max_hp !== undefined && active_users) {
+            // Find my username based on my user_id
+            let my_username = null;
+            for (const [sid, user] of Object.entries(active_users)) {
+                if (user.user_id === currentUser.user_id) {
+                    my_username = user.username;
+                    break;
+                }
+            }
+
+            // Update my specific card in the sidebar
+            if (my_username) {
+                const myCard = document.getElementById(my_username);
+                if (myCard) {
+                    const healthBar = myCard.querySelector('.lifebar-health');
+                    const container = myCard.querySelector('.lifebar-container');
+                    const percentage = Math.max(0, (data.player_hp / data.player_max_hp) * 100);
+                    
+                    if (healthBar) {
+                        healthBar.style.width = `${percentage}%`;
+                        // Optional: Update aria tags for accessibility
+                        container.setAttribute('aria-valuenow', percentage);
+                    }
+                }
+            }
+        }
+
+        // --- 2. Update Enemies ---
+        const enemySection = document.getElementById('enemy-section');
+        const enemyContainer = document.getElementById('enemy-container');
+        
+        // Clear existing enemies
+        enemyContainer.innerHTML = '';
+    
+        // If combat is finished or no enemies, hide the section
+        if (!data.in_combat || !data.enemies || data.enemies.length === 0) {
+            enemySection.classList.add('d-none');
+            return;
+        }
+    
+        // Show section
+        enemySection.classList.remove('d-none');
+    
+        // Render enemies
+        data.enemies.forEach(enemy => {
+            const percentage = Math.max(0, (enemy.current_hp / enemy.max_hp) * 100);
+            
+            const card = document.createElement('div');
+            card.className = 'mb-4 player-card enemy-card rounded-1'; 
+            
+            const avatarSrc = "/static/temp/avatar_animal_00001.png"; 
+    
+            card.innerHTML = `
+                <img src="${avatarSrc}" class="card-img-top player-avatar" style="filter: hue-rotate(140deg);"> <div class="player-info">
+                    <div class="d-flex justify-content-between">
+                        <span class="player-name">${enemy.name}</span>
+                        <span class="small text-muted">${enemy.current_hp}/${enemy.max_hp}</span>
+                    </div>
+                    <div class="progress lifebar-container">
+                        <div class="progress-bar lifebar-health enemy" style="width: ${percentage}%;"></div>
+                    </div>
+                </div>
+            `;
+            enemyContainer.appendChild(card);
+        });
     }
 
         

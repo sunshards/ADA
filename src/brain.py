@@ -1431,46 +1431,53 @@ def main_modular(character_id, user_input):
 
     #! ================= COMBAT TURN =================
     if state["in_combat"]:
-        # Passiamo ITEMS_DB come None o lista vuota se non usata, 
-        # l'importante è che combat_loop_modular usi le nuove funzioni getter
+        # Pass empty list for items if using DB getter inside loop
         is_finished, victory, logs = combat_loop_modular(
             character,
             state["combat_enemies"],
-            [], # items_db non serve più se usi il DB
+            [], 
             user_input,
             state
         )
 
         output_buffer.extend(logs)
 
-        if is_finished:
-            state["in_combat"] = False
-            state["combat_enemies"] = None
-
-            if not victory:
-                output_buffer.append("Game Over.")
+        if not is_finished:
+            # Combat is NOT over -> Return logs and wait for next player input
             return output_buffer
 
-        return output_buffer
+        # === IF WE REACH HERE, COMBAT JUST ENDED ===
+        state["in_combat"] = False
+        state["combat_enemies"] = None
+
+        if not victory:
+            output_buffer.append("Game Over.")
+            return output_buffer
+
+        # Victory! Set the input to force the AI to describe the aftermath
+        user_input = "The battle is over. I look around." 
+        
+        # IMPORTANT: We do NOT return here. We let the code flow down 
+        # to "NORMAL WORLD TURN" so the AI narrates the victory scene immediately.
 
     #! ================= NORMAL WORLD TURN =================
     recent_history.append({"role": "user", "content": user_input})
 
-    # 1. Recupera NOMI Oggetti e Skill dal DB
+    # 1. Retrieve Item/Skill Names for Context
     available_items_string = get_db_item_names_list()
     available_skills_string = get_db_skill_names_list()
 
-    # 2. Context Injection Aggiornata
+    # 2. Context Injection
     context_injection = {
         "role": "system",
         "content": f"""
         WORLD KNOWLEDGE:
         Existing Items: [{available_items_string}]
-        Existing Skills/Spells: [{available_skills_string}]
+        Existing Spells/Skills: [{available_skills_string}]
         
         IMPORTANT:
-        - Only allows the player to find/buy items that exist in this list.
-        - If the player tries to use a skill, ensure it matches a name in the list.
+        - Only allow the player to find items in this list.
+        - Ensure used skills match a name in the list.
         """
     }
 
@@ -1494,6 +1501,7 @@ def main_modular(character_id, user_input):
         ]
         random_trigger = random.random() < 0.2 and not is_safe_zone
 
+        # Encounter logic + UI handling
         if data.get("encounter") or random_trigger:
             output_buffer.append("\n[ALERT] Combat Initiated!")
 
@@ -1501,6 +1509,24 @@ def main_modular(character_id, user_input):
             state["in_combat"] = True
             state["combat_enemies"] = enemies
 
+            # Send initial enemy data to UI immediately
+            initial_enemies_data = []
+            for e in enemies:
+                initial_enemies_data.append({
+                    "name": e["name"],
+                    "current_hp": e["current_hp"],
+                    "max_hp": e["max_hp"]
+                })
+            
+            output_buffer.append({
+                "type": "combat_data",
+                "in_combat": True,
+                "enemies": initial_enemies_data,
+                "player_hp": character["current_hp"],
+                "player_max_hp": character["max_hp"]
+            })
+
+            # Run first combat logic (initiative/narration)
             is_finished, victory, logs = combat_loop_modular(
                 character, enemies, [], "", state
             )
@@ -1521,13 +1547,6 @@ def main_modular(character_id, user_input):
         if "quest" in data:
             state["quest"] = data["quest"]
 
-        #! ================= UI =================
-        status_ui = (
-            f"LOC: {state['location']} | HP: {character['current_hp']}/{character['max_hp']}\n"
-            f"GOLD: {character['gold']} | XP: {character['xp']}\n"
-        )
-        output_buffer.append(status_ui)
-
         if data.get("narration"):
             output_buffer.append(data["narration"])
 
@@ -1541,13 +1560,13 @@ def main_modular(character_id, user_input):
     return output_buffer
 
 
-
 def combat_loop_modular(player, enemies, items, user_input, state):
     """
     Processes ONE combat turn.
     Returns: (is_finished, victory_or_none, message_list)
     """
-
+    
+    # If starting fresh without input, just prompt
     if not user_input:
         return False, None, ["Combat begins! What will you do?"]
 
@@ -1556,6 +1575,12 @@ def combat_loop_modular(player, enemies, items, user_input, state):
     alive_enemies = [e for e in enemies if e["current_hp"] > 0]
 
     if not alive_enemies:
+        # Send cleanup UI event
+        combat_log.append({
+            "type": "combat_data",
+            "in_combat": False,
+            "enemies": []
+        })
         return True, True, ["The battlefield is silent. No enemies remain."]
 
     target_idx = player.get("_combat_target_idx", 0)
@@ -1591,14 +1616,12 @@ def combat_loop_modular(player, enemies, items, user_input, state):
         )
 
     elif action == "use skill" and selected_skill:
-            # Passiamo character['level'] per il controllo min_lv
             skill = get_skill_by_name(selected_skill, skills_db=None, player_level=player['level'])
             
             if not skill:
-                # Se ritorna None, significa che non esiste O che il livello è troppo basso
-                turn_text.append(f"Non riesci a usare '{selected_skill}'. (Forse il livello è troppo basso?)")
+                turn_text.append(f"Failed to use '{selected_skill}'. (Level too low?)")
             else:
-                weapon = get_item_by_name(player["equipped_weapon"]) # Item usa DB ora
+                weapon = get_item_by_name(player["equipped_weapon"]) 
 
                 if weapon and weapon.get("subType") == "wand" and weapon.get("usages", 0) > 0:
                     weapon["usages"] -= 1
@@ -1617,6 +1640,12 @@ def combat_loop_modular(player, enemies, items, user_input, state):
     elif action == "run":
         roll = roll_d20() + stat_modifier(player["stats"]["DEX"])
         if roll >= 15:
+            # Send cleanup UI event
+            combat_log.append({
+                "type": "combat_data",
+                "in_combat": False,
+                "enemies": []
+            })
             return True, True, ["You escape from combat!"]
         turn_text.append("You fail to escape!")
 
@@ -1633,7 +1662,6 @@ def combat_loop_modular(player, enemies, items, user_input, state):
         turn_text.append(f"{enemy['name']}: {result['message']}")
 
     #! ================= AI NARRATION =================
-    # Fetch location and ingect into the narration
     location = state.get("location", "Unknown Location")
     narration = narrate_flavor(
         f"""
@@ -1652,32 +1680,55 @@ def combat_loop_modular(player, enemies, items, user_input, state):
 
     combat_log.append(narration)
 
+    # 1. Player Defeated
     if player["current_hp"] <= 0:
+        # Send final UI update (0 HP) then end
+        combat_log.append({
+            "type": "combat_data",
+            "in_combat": False,
+            "enemies": [],
+            "player_hp": 0,
+            "player_max_hp": player["max_hp"]
+        })
         return True, False, combat_log + ["You have been defeated."]
 
-    if not [e for e in enemies if e["current_hp"] > 0]:
+    # 2. Victory Check
+    alive_after_turn = [e for e in enemies if e["current_hp"] > 0]
+    
+    if not alive_after_turn:
         total_xp = sum(e.get("cr", 1) * 10 for e in enemies)
         player["xp"] = update_stat(player["xp"], total_xp)
         combat_log.append(f"Victory! You gain {total_xp} XP.")
+        
+        # Clear UI
+        combat_log.append({
+            "type": "combat_data",
+            "in_combat": False,
+            "enemies": [],
+            "player_hp": player["current_hp"],
+            "player_max_hp": player["max_hp"]
+        })
         return True, True, combat_log
 
-    enemy = alive_enemies[0] if alive_enemies else None
-
-    if enemy:
-        combat_log.insert(
-            0,
-            f"[STATUS] HP {player['current_hp']} | "
-            f"{enemy['name']} HP: {enemy['current_hp']}/{enemy['max_hp']} | "
-            f"Enemies left: {len(alive_enemies)}"
-        )
-    else:
-        combat_log.insert(
-            0,
-            f"[STATUS] HP {player['current_hp']} | Enemies left: 0"
-        )
+    # 3. Ongoing Combat - Update UI
+    # Create data snapshot for the frontend
+    enemies_snapshot = []
+    for e in alive_after_turn:
+        enemies_snapshot.append({
+            "name": e["name"],
+            "current_hp": e["current_hp"],
+            "max_hp": e["max_hp"]
+        })
+    
+    combat_log.append({
+        "type": "combat_data",
+        "in_combat": True,
+        "enemies": enemies_snapshot,
+        "player_hp": player["current_hp"],
+        "player_max_hp": player["max_hp"]
+    })
 
     return False, None, combat_log
-
 
 
 
