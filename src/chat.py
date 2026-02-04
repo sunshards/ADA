@@ -126,30 +126,38 @@ def handle_send_message(data):
     if not message:
         return
     
+    # 1. Handle User Message
     message = Message(text=message, sid=request.sid, type='incoming', room=room)
     message_obj = message.getJSON()
     
-    # Save to database here in the future
-    
-    # Broadcast to room except to sender to display incoming message
     emit('new_message', message_obj, room=room, skip_sid=request.sid)
     
-    # Send confimation to sender to display outgoing message
     sender_message = message_obj.copy()
     sender_message['type'] = 'outgoing'
     emit('message_sent', sender_message)
     emit('generating_answer', {})
 
-    # This forces the server to actually send the data above to the browser 
-    # BEFORE starting the heavy AI logic.
     socketio.sleep(0.01)
 
-    # Generate ADA response to input and send
+    # 2. Generate ADA Response
     responses = generate_response(message.text, user_data["character_id"])
+    
+    # 3. Process Responses (THIS IS THE FIX)
     for response in responses:
-        server_send_message(text=response, room='default')
-    emit('generated_answer', {})
+        # Check if the response is a Data Dictionary (Combat Info)
+        if isinstance(response, dict) and response.get("type") == "combat_data":
+            # Emit a specific event for the Sidebar, NOT a chat message
+            emit('combat_update', response, room=room)
+        
+        # Check if the response is a String (Narration)
+        elif isinstance(response, str):
+            # Optional: Filter out the specific phrase you don't want
+            if "[ALERT] Combat Initiated!" in response:
+                continue 
+            
+            server_send_message(text=response, room=room)
 
+    emit('generated_answer', {})
 
 @socketio.on('typing')
 def handle_typing(data):

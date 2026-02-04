@@ -106,3 +106,21 @@ html, body {overflow: hidden;}
 .lifebar-health {
     background-color: red;
 }
+
+/* Distinct styling for Enemy Cards */
+.enemy-card {
+    border-color: #dc3545; /* Red border */
+}
+
+.lifebar-health.enemy {
+    background-color: #dc3545; /* Red health bar */
+}
+
+.enemy-section-title {
+    color: #dc3545;
+    margin-top: 1rem;
+    border-bottom: 1px solid #555;
+    padding-bottom: 0.5rem;
+    width: 100%;
+    text-align: center;
+}

@@ -111,24 +111,33 @@
 
             <div class="col-5 d-flex justify-content-center mt-2 player-column">
                 <div class="player-box d-flex flex-column align-items-center p-3 rounded-3 overflow-y-scroll flex-grow-1 mx-3"
-                id="player-container">
-                    <h4>Players</h4>
-                    {% for player in players %}
-                    <div class="mb-4 player-card rounded-1">
-                        <img 
-                        src="{{ url_for('static', filename='temp/avatar_animal_00001.png') }}" 
-                        alt="Avatar 1"
-                        class="card-img-top player-avatar"
-                        >
-                        <div class="player-info">
-                            <span class="player-name">{{player["username"]}}</span>
-                            <div class="progress lifebar-container" role="lifebar" aria-label="Lifebar" aria-valuenow="{{player["percentage"]}}" aria-valuemin="0" aria-valuemax="100">
-                                <div class="progress-bar lifebar-health" style="width: {{player["percentage"]}}%;"></div>
+                id="right-sidebar-container">
+                    
+                    <h4 class="mb-3">Party</h4>
+                    <div id="player-container" class="w-100">
+                        {% for player in players %}
+                        <div class="mb-4 player-card rounded-1">
+                            <img 
+                            src="{{ url_for('static', filename='temp/avatar_animal_00001.png') }}" 
+                            alt="Avatar 1"
+                            class="card-img-top player-avatar"
+                            >
+                            <div class="player-info">
+                                <span class="player-name">{{player["username"]}}</span>
+                                <div class="progress lifebar-container">
+                                    <div class="progress-bar lifebar-health" style="width: {{player["percentage"]}}%;"></div>
+                                </div>
                             </div>
                         </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
-
+            
+                    <div id="enemy-section" class="d-none w-100 d-flex flex-column align-items-center">
+                        <h4 class="enemy-section-title">Hostiles</h4>
+                        <div id="enemy-container" class="w-100">
+                            </div>
+                    </div>
+            
                 </div>
             </div>
         </div>
