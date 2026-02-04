@@ -19,19 +19,25 @@ Gone are the days of tedious manual entry. ADA streamlines the onboarding proces
 * **Natural Language Input:** Simply answer a few prompt questions or describe your hero in plain English.
 * **Stat-Block Ready:** The system instantly compiles your description into a fully playable character sheet, complete with stats and attributes.
 
+<p align="center">
 <img width="450" alt="Screenshot From 2026-02-04 15-57-02" src="https://github.com/user-attachments/assets/9bedb135-6491-4eee-9205-12b101c21316" />
+</p>
 
 ### 2. The Dynamic AI Game Master
 ADA acts as an omnipresent storyteller, managing the flow of the game in real-time:
 * **World Building:** Automatically generates settings and weaves complex plots tailored to the group.
 * **Adaptive Narratives:** The story isn't static; ADA responds dynamically to player choices, shifting the plot as the party explores.
 
+<p align="center">
 <img width="450" alt="Screenshot From 2026-02-04 15-57-36" src="https://github.com/user-attachments/assets/b745af55-dc2a-4f14-b8ba-09020b37800d" />
+</p>
 
 ### 3. Hybrid Logic System (Hallucination-Free)
 The core innovation of ADA is the separation of "Flavor" and "Rules." It reacts to natural language but relies on a rigid backend for mechanics, ensuring the AI **never hallucinates game rules.**
 
+<p align="center">
 <img width="450" alt="Screenshot From 2026-02-04 16-02-42" src="https://github.com/user-attachments/assets/d66f4bf9-1efd-4ec7-9181-7e406bc410b9" />
+</p>
 
 * **Database Grounding:**
     * The AI cannot invent non-existent weaponry or spells.
@@ -62,8 +68,9 @@ ADA uses a **Hybrid Logic System** that separates narrative flavor from game mec
 ### The Game Loop
 The core loop, driven by the `narrate_strict` function, ensures synchronization between the user, the database, and the AI model.
 
+<p align="center">
 <img width="500"  alt="Screenshot From 2026-02-04 16-47-10" src="https://github.com/user-attachments/assets/204a0b7d-a5a8-424b-a521-7c65c6d53d66" />
-
+</p>
 
 1.  **Context Assembly:** Before every turn, the system fetches valid **Item** and **Skill** names from MongoDB. This list is injected into the AI's system prompt to prevent it from inventing non-existent items.
 2.  **Generation:** The AI generates a response containing both narrative text and a hidden JSON block.
@@ -72,8 +79,9 @@ The core loop, driven by the `narrate_strict` function, ensures synchronization 
 ### Anti-Hallucination Logic
 To prevent the AI from "breaking" the game (e.g., granting infinite gold or invalid items), we utilize a rigid validation pipeline.
 
+<p align="center">
 <img width="500"  alt="Dropped Image" src="https://github.com/user-attachments/assets/f6476965-1023-4f12-857e-170bd0d5fd6f" />
-
+</p>
 
 * **Regex Stripping:** The system uses `re.search(r'\{.*\}')` to extract *only* the JSON object from the AI's raw response, discarding any conversational fluff.
 * **Self-Healing:** If the AI produces malformed JSON, the system automatically triggers a "Repair" prompt, asking the model to fix syntax errors without altering the game state.
