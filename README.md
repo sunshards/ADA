@@ -13,21 +13,36 @@ Role-playing is fantastic... but it requires time, organization, and a group. Of
 ADA is a multiplayer text adventure powered by state-of-the-art AI for quick, spontaneous, and immersive sessions. No preparation required.
 
 ## Key Features
-
 <img width="1277" height="1325" alt="Screenshot From 2026-02-04 15-57-02" src="https://github.com/user-attachments/assets/9bedb135-6491-4eee-9205-12b101c21316" />
-* **Automated Character Creation:** Just answer a few questions or provide a description, and ADA generates a complete, stat-block-ready character sheet instantly.
 
-  <img width="1274" height="1472" alt="Screenshot From 2026-02-04 15-57-36" src="https://github.com/user-attachments/assets/b745af55-dc2a-4f14-b8ba-09020b37800d" />
+### 1. Instant Character Generation
+Gone are the days of tedious manual entry. ADA streamlines the onboarding process:
+* **Natural Language Input:** Simply answer a few prompt questions or describe your hero in plain English.
+* **Stat-Block Ready:** The system instantly compiles your description into a fully playable character sheet, complete with stats and attributes.
 
-* **The AI Game Master:** ADA finds the group, creates the setting, and weaves the plot in real-time, adapting dynamically to player choices.
+<img width="1274" height="1472" alt="Screenshot From 2026-02-04 15-57-36" src="https://github.com/user-attachments/assets/b745af55-dc2a-4f14-b8ba-09020b37800d" />
 
+### 2. The Dynamic AI Game Master
+ADA acts as an omnipresent storyteller, managing the flow of the game in real-time:
+* **World Building:** Automatically generates settings and weaves complex plots tailored to the group.
+* **Adaptive Narratives:** The story isn't static; ADA responds dynamically to player choices, shifting the plot as the party explores.
 
 <img width="1274" height="1472" alt="Screenshot From 2026-02-04 16-02-42" src="https://github.com/user-attachments/assets/d66f4bf9-1efd-4ec7-9181-7e406bc410b9" />
-* **Hybrid Logic System:** ADA reacts to your natural language descriptions but **does not hallucinate game mechanics**.
-    * **Database Grounding:** Items, skills, enemies, and locations are strictly pulled from the MongoDB database. The AI cannot invent items that do not exist in the JSON/DB definitions.
-    * **Logic-Based Combat:** The system interprets your text actions but applies strict game rules for damage, hit rates, and item usage.
-* **Alignment & Morality Engine:** The system acts as a "Gatekeeper," validating that player actions align with their character's morality and righteousness.
-* **Anti-Abuse System:** Keeps the game balanced by validating actions against the ruleset, preventing "god-moding."
+
+### 3. Hybrid Logic System (Hallucination-Free)
+The core innovation of ADA is the separation of "Flavor" and "Rules." It reacts to natural language but relies on a rigid backend for mechanics, ensuring the AI **never hallucinates game rules.**
+
+* **Database Grounding:**
+    * The AI cannot invent non-existent weaponry or spells.
+    * All Items, Skills, Enemies, and Locations are strictly pulled from the definitions in the MongoDB/JSON database.
+* **Logic-Based Combat:**
+    * While you narrate your attack in text, the system calculates the outcome using strict math.
+    * Damage rolls, hit rates, and item consumption are handled by code, not the LLM.
+
+### 4. Game Integrity & Balance
+ADA ensures the game remains fair and consistent for all players:
+* **The Morality Gatekeeper:** Validates that actions align with a character's established alignment and backstory, preventing "out-of-character" exploits.
+* **Anti-Abuse System:** A built-in referee that prevents "god-moding" by cross-referencing every action against the ruleset before execution.
 
 ## 🛠️ Tech Stack
 
