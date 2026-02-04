@@ -60,14 +60,13 @@ OPENROUTER_API_KEY=sk-or-your-actual-key-here
 
 # Your MongoDB Connection String
 # Replace <username> and <password> with your actual credentials.
-# Team password reference: GlQh9dq6pgQ2hLM2
-CONNECTION_STRING="mongodb+srv://<username>:GlQh9dq6pgQ2hLM2@cluster.mongodb.net/ADADatabase?retryWrites=true&w=majority"
+CONNECTION_STRING="mongodb+srv://<username>:<password>@cluster.mongodb.net/"
 ```
 
 ### 3. AI Model Configuration
 Open src/brain.py. You can configure the list of free or paid models to use. The system automatically handles fallback if a model is unavailable.
 
-```bash
+```python
 # src/brain.py
 
 # Updated list of free models (Check OpenRouter for latest)
