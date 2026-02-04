@@ -1,6 +1,10 @@
 # ADA - Automatic Dungeon Adventure
 
-> **"Ogni tanto arriva un prodotto che cambia tutto."**
+
+https://github.com/user-attachments/assets/87c569f5-adb3-4d51-8329-92c01f10920f
+
+
+> **"Every now and then, a product comes along that changes everything.."**
 
 Role-playing is fantastic... but it requires time, organization, and a group. Often, we have none of these. The result? Those who want to play can't, and those who don't deserve to play... do anyway.
 
@@ -8,10 +12,17 @@ Role-playing is fantastic... but it requires time, organization, and a group. Of
 
 ADA is a multiplayer text adventure powered by state-of-the-art AI for quick, spontaneous, and immersive sessions. No preparation required.
 
-## 🌟 Key Features
+## Key Features
 
+<img width="1277" height="1325" alt="Screenshot From 2026-02-04 15-57-02" src="https://github.com/user-attachments/assets/9bedb135-6491-4eee-9205-12b101c21316" />
 * **Automated Character Creation:** Just answer a few questions or provide a description, and ADA generates a complete, stat-block-ready character sheet instantly.
+
+  <img width="1274" height="1472" alt="Screenshot From 2026-02-04 15-57-36" src="https://github.com/user-attachments/assets/b745af55-dc2a-4f14-b8ba-09020b37800d" />
+
 * **The AI Game Master:** ADA finds the group, creates the setting, and weaves the plot in real-time, adapting dynamically to player choices.
+
+
+<img width="1274" height="1472" alt="Screenshot From 2026-02-04 16-02-42" src="https://github.com/user-attachments/assets/d66f4bf9-1efd-4ec7-9181-7e406bc410b9" />
 * **Hybrid Logic System:** ADA reacts to your natural language descriptions but **does not hallucinate game mechanics**.
     * **Database Grounding:** Items, skills, enemies, and locations are strictly pulled from the MongoDB database. The AI cannot invent items that do not exist in the JSON/DB definitions.
     * **Logic-Based Combat:** The system interprets your text actions but applies strict game rules for damage, hit rates, and item usage.
@@ -27,7 +38,7 @@ ADA is a multiplayer text adventure powered by state-of-the-art AI for quick, sp
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
