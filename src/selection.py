@@ -7,6 +7,9 @@ bp = Blueprint('selection', __name__, url_prefix='/selection')
 
 @bp.route('/', methods=('GET', 'POST'))
 def selection():
+    if g.user is None:
+            return redirect(url_for('auth.login'))
+
     characters_id = g.user["Characters"]
 
     player_characters = []

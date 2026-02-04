@@ -16,6 +16,9 @@ from flask import (
 
 from pathlib import Path
 
+
+# Load JSON databases for testing purposes
+#! Deprecated: we now use MongoDB for skills/items/enemies/classes
 BASE_DIR = Path(__file__).resolve().parent
 json_path = BASE_DIR / "json_exp"
 skill_path = json_path / "skill.json"
@@ -33,13 +36,10 @@ client = OpenAI(
 )
 
 # Fall back to call if another free model is not available
+# Updated list of free models (as of Feb 2026)
+# If the app fails chose another free model from https://openrouter.ai/models?filter=free
 FREE_MODELS = [
-    "mistralai/devstral-2512:free", # Damn Frog Eater from the other side of the Apls
-    "nex-agi/deepseek-v3.1-nex-n1:free",
-    "openai/gpt-oss-120b:free",
-    "google/gemma-3n-e2b-it:free",
-    "meta-llama/llama-guard-4-12b:free",
-    "openrouter/auto"
+    "arcee-ai/trinity-large-preview:free"
 ]
 
 # Global variables for long-term memory management 
@@ -222,26 +222,49 @@ def update_stat(current, change, min_val=0, max_val=9999):
 # Use the AI to generate a full character sheet JSON based on a free-text description.
 # TODO: change the autput form stirngname to the id of the skill/item/class from the database
 def create_character_from_description(description: str) -> dict:
-    # Load the approved skills from skill.json
-    with open(skill_path, "r", encoding="utf-8") as f:
-        skills_db = json.load(f)
-    with open(item_path, "r", encoding="utf-8") as f:
-        items_db = json.load(f)
+    # --- 1. CARICAMENTO DATI DAL DATABASE ---
+    try:
+        # Carichiamo solo le skill di livello 1 per la creazione (RISPARMIO TOKEN)
+        skills_cursor = current_app.db['Skills'].find({"min_lv": {"$lte": 1}})
+        skills_db = list(skills_cursor)
+
+        # Carichiamo tutti gli oggetti per la ricerca di similarità
+        items_cursor = current_app.db['Items'].find({})
+        items_db = list(items_cursor)
+
+        # Carichiamo le classi (se esiste la collezione Classes, altrimenti fallback o errore gestito)
+        # Nota: Se non hai una collezione 'Classes' nel DB, assicurati di crearla o usare una lista statica qui.
+        classes_cursor = current_app.db['Classes'].find({}) if 'Classes' in current_app.db.list_collection_names() else []
+        classes_db = list(classes_cursor)
+        
+        # Fallback se il DB classi è vuoto (usa una lista base per evitare crash)
+        if not classes_db:
+             classes_db = [
+                {"name": "Warrior", "description": "Strong melee fighter"}, 
+                {"name": "Mage", "description": "Arcane spellcaster"},
+                {"name": "Rogue", "description": "Stealthy and agile"}
+            ]
+
+    except Exception as e:
+        print(f"[ERROR] Database connection failed in character creation: {e}")
+        return {} # Ritorna vuoto o gestisci l'errore
+
+    # --- 2. PREPARAZIONE PROMPT ---
     
-    skill_options = [f"- {s['name']} (Type: {s['type']}, Min Level: {s['min_lv']}): {s['description']}" for s in skills_db]
+    # Formattiamo le opzioni per l'AI
+    skill_options = [f"- {s['name']} (Type: {s['type']}): {s['description']}" for s in skills_db]
     available_skills_text = "\n".join(skill_options)
 
-    class_options = [f"- {c['name']}: {c['description']}" for c in classes]
+    class_options = [f"- {c['name']}: {c['description']}" for c in classes_db]
     available_classes_text = "\n".join(class_options)
-    
 
     prompt = [
             {"role": "system", "content": "You are a character creation AI. Generate a complete D&D-style character sheet in JSON format."},
             {"role": "user", "content": f"""
-        Create a character sheet based on this description:
-        {description}
+        Create a Level 1 character sheet based on this description:
+        "{description}"
 
-        **AVAILABLE SKILLS (CHOOSE ONE FROM THESE ONLY):**
+        **AVAILABLE STARTING SKILLS (CHOOSE 2 FROM THESE ONLY):**
         {available_skills_text}
 
         **AVAILABLE CLASSES (CHOOSE ONE FROM THESE ONLY):**
@@ -261,41 +284,36 @@ def create_character_from_description(description: str) -> dict:
         - alignment_righteousness
         - alignment_morality
         - birthplace
-        - skills (is a list that has to have at least one skill related to the class chosen)
+        - skills (Must include exactly 2 skills from the list above)
         - description
         - stats (STR, CON, DEX, INT, WIS, CHA)
 
-        **IMPORTANT RULES FOR SKILLS:**
+        **IMPORTANT RULES:**
         - You MUST use the exact names from the VALID SKILLS list above.
-        - If the user asks for a 'buff', look for skills with type: buff.
-        - If the user asks for a 'debuff', look for skills with type: defuff.
-        - If the user asks for 'magic', look for skills with type: magic.
-        - Do NOT repeat skills.
-
+        - Do NOT invent new skills.
+        
         Constraints for stats:
         - Each individual stat must be at least 5.
         - The sum of all stats must **not exceed 45**.
         - Distribute stats logically based on the character description.
-        - Keep stats as integers.
 
-        Return **only valid JSON**, without explanations or markdown. Ensure the JSON is complete and all fields are present.
+        Return **only valid JSON**.
         """}
-        ] 
+    ] 
 
-    
     try:
         output = narrate(prompt)
+        print(f"[DEBUG] AI Character Output: {output[:100]}...") # Debug log
         character = extract_json(output)
 
     except Exception as e:
         print(f"[ERROR] Failed to generate character: {e}")
         print("Using placeholder character instead.")
-        # Fallback placeholder
         return {
             "name": "Unknown Hero",
             "race": "Human",
             "class": "Warrior",
-            "max_hp": 100,
+            "max_hp": 50,
             "gold": 50,
             "xp": 0,
             "level": 1,
@@ -304,91 +322,74 @@ def create_character_from_description(description: str) -> dict:
             "equipped_weapon": "Short Sword",
             "alignment_righteousness": "neutral",
             "alignment_morality": "neutral",
-            "birthplace": "",
+            "birthplace": "Unknown",
             "description": description,
             "skills": [],
-            "stats": {
-                "STR": 10,
-                "CON": 10,
-                "DEX": 10,
-                "INT": 5,
-                "WIS": 5,
-                "CHA": 5
-            }
+            "stats": {"STR": 10, "CON": 10, "DEX": 10, "INT": 5, "WIS": 5, "CHA": 5}
         }
     
-    # --- Assign skills from DB based on AI suggestions ---
-    #? No find_most_similar_item used, because the ai already has the skills in the prompt when generated, we only need to validate
+    # --- 3. VALIDAZIONE SKILLS (DB Check) ---
     selected_skills = []
+    
+    # Crea un set di nomi skill validi (tutti minuscoli per confronto safe)
+    valid_skill_names = {s["name"].lower(): s["name"] for s in skills_db}
+
     for skill_name in character.get("skills", []):
-        # Find the skill in the skills database (case-insensitive match)
-        skill = None
-        for s in skills_db:
-            if s["name"].lower() == skill_name.lower():
-                skill = s
-                break
+        s_lower = skill_name.lower()
+        if s_lower in valid_skill_names:
+            # Aggiungi il nome corretto (formattato come nel DB)
+            if valid_skill_names[s_lower] not in selected_skills:
+                selected_skills.append(valid_skill_names[s_lower])
 
-        # Add it if it's valid and not already in the selected list
-        if skill and skill["name"] not in selected_skills:
-            selected_skills.append(skill["name"])
+    # Fallback: se l'AI non ha messo skill valide, ne diamo una a caso tra quelle disponibili
+    if not selected_skills and skills_db:
+        selected_skills.append(skills_db[0]["name"])
 
-    # Fallback: if no valid skills found, pick one first matching skill
-    if not selected_skills:
-        for s in skills_db:
-            if s["type"] in ("attack", "magic", "buff", "debuff"):
-                selected_skills.append(s["name"])
-                break  # pick only the first matching skill
-
-    # Update character skills
     character["skills"] = selected_skills
 
-    # --- Assign inventory (weapon/item) based on similarity ---
-    #? We dont ask the ai to suggest anything, we use the characher description to find the closest item that fits
-    # 1. Filter the database for strictly weapons or magical items for the primary slot
-    combat_items = [i for i in items_db if i["itemType"] in ("weapon", "magical")]
+    # --- 4. ASSEGNAZIONE EQUIPAGGIAMENTO (Similarity Search) ---
     
-    # 2. Filter for consumables or other non-combat items for the utility slots
-    utility_items_pool = [i for i in items_db if i["itemType"] not in ("weapon", "magical")]
+    # Filtra items dal DB caricato
+    combat_items = [i for i in items_db if i.get("itemType") in ("weapon", "magical")]
+    utility_items_pool = [i for i in items_db if i.get("itemType") not in ("weapon", "magical")]
 
-    # Find the best combat item to equip
+    # Arma Principale
+    inventory = []
     if combat_items:
         best_weapon, _ = find_most_similar_item(character["description"], combat_items)
-        inventory = [best_weapon["name"]]
+        inventory.append(best_weapon["name"])
         character["equipped_weapon"] = best_weapon["name"]
     else:
-        # Hard fallback if JSON is empty or broken
-        inventory = ["Short Sword"]
+        inventory.append("Short Sword")
         character["equipped_weapon"] = "Short Sword"
 
-    # 3. Choose exactly 3 non-weapon/non-magical items
+    # Oggetti Utili (Max 3)
     extra_items_added = 0
     MAX_EXTRA_ITEMS = 3
 
     while extra_items_added < MAX_EXTRA_ITEMS and utility_items_pool:
-        # Find the most similar utility item to the character description
         next_item, _ = find_most_similar_item(character["description"], utility_items_pool)
-        inventory.append(next_item["name"])
-        extra_items_added += 1
         
-        # Remove selected item from the pool to avoid duplicates
+        if next_item["name"] not in inventory:
+            inventory.append(next_item["name"])
+            extra_items_added += 1
+        
+        # Rimuovi dalla pool locale per evitare duplicati nel loop
         utility_items_pool.remove(next_item)
 
     character["inventory"] = inventory
 
-    # ----------------------------------------------------------
-
-    # TODO: when we add the classes database, do as above
-    # If equipped_weapon is not present in the weapon list, find the most similar one.
-    #                       V <- this is the name of a element of the list: used in the loop to create a list of weapon names
-    existing_class_names = [c["name"] for c in classes]
+    # --- 5. VALIDAZIONE CLASSE ---
+    existing_class_names = [c["name"] for c in classes_db]
     
     if character["class"] not in existing_class_names:
-        # Find the closest match from your JSON (e.g., "Mage" if AI said "Wizard")
-        most_similar_class, similarity = find_most_similar_item(character["class"], classes)
-        character["class"] = most_similar_class["name"]
-        print(f"[SYSTEM] AI suggested '{character['class']}', mapped to approved class: '{most_similar_class['name']}'")
+        if classes_db:
+            most_similar_class, _ = find_most_similar_item(character["class"], classes_db)
+            character["class"] = most_similar_class["name"]
+        else:
+            character["class"] = "Warrior" # Fallback estremo
 
-    # Current HP for combat tracking
+    # Setta HP correnti
     character["current_hp"] = character["max_hp"]
 
     return character
@@ -400,18 +401,23 @@ def create_character_from_description(description: str) -> dict:
 # Tutorial used: (https://www.newscatcherapi.com/blog-posts/ultimate-guide-to-text-similarity-with-python)
 # Depends on: scikit-learn
 def find_most_similar_item(description, items):
-    # Builds the corpus: first the character description, then all the item descriptions
-    corpus = [description] + [item['description'] for item in items]
+    # Builds the corpus: combines Name + Description for better matching
+    # We add the name twice to give it more weight
+    corpus = [description] + [f"{item['name']} {item['name']} {item['description']}" for item in items]
     
     # TF-IDF
-    vectorizer = TfidfVectorizer()
+    vectorizer = TfidfVectorizer(stop_words='english') # Optional: removes words like "the", "a"
     tfidf_matrix = vectorizer.fit_transform(corpus)
     
-    # Calculate cosine similarity between the character description vector and vector of all items
+    # Calculate cosine similarity
     similarity_scores = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:]).flatten()
     
     # Take the item with the highest similarity score
     max_index = similarity_scores.argmax()
+    
+    # Debug print to see what happened (Optional)
+    # print(f"[DEBUG] Best match for '{description}': {items[max_index]['name']} (Score: {similarity_scores[max_index]})")
+
     return items[max_index], similarity_scores[max_index]
 
 
@@ -691,6 +697,35 @@ def use_item(character, real_name, items):
 
 
 
+"""
+Recupera solo i NOMI degli oggetti dal database per risparmiare token.
+Restituisce una stringa formattata: "Longbow, Short Sword, Health Potion..."
+
+Args:
+    item_type (str, optional): Filtra per tipo (es. 'weapon', 'consumable'). 
+                                Se None, prende tutto.
+"""
+def get_db_item_names_list(item_type=None):
+
+    try:
+        # Prepara il filtro query
+        query = {}
+        if item_type:
+            query["itemType"] = item_type
+
+        # Query ottimizzata: Proiezione solo sul campo 'name' e esclusione di '_id'
+        # Questo riduce drasticamente il traffico di rete tra App e DB
+        cursor = current_app.db['Items'].find(query, {"name": 1, "_id": 0})
+        
+        # Estrae i nomi dal cursore
+        names = [doc["name"] for doc in cursor]
+        
+        # Unisce in una singola stringa separata da virgole (formato ideale per i prompt AI)
+        return ", ".join(names)
+        
+    except Exception as e:
+        print(f"[ERROR] Impossibile recuperare nomi oggetti dal DB: {e}")
+        return ""
 
 
 
@@ -811,13 +846,61 @@ Example: {{"action": "use skill", "target_skill": "Fire Bolt", "confidence": 0.8
 
 
 
-#! in the actual database comabt loop substitute all the reference 
-#! to the items_db with a query to the database
-def get_item_by_name(name: str, items_db: list):
-    return next((i for i in items_db if i["name"] == name), None)
+# Sostituisce la vecchia funzione che usava la lista locale
+def get_item_by_name(name: str, items_db=None): 
+    """
+    Cerca i dettagli completi di un oggetto nel DB dato il nome.
+    Ignora 'items_db' se passato per retro-compatibilità, usa MongoDB.
+    """
+    if not name:
+        return None
+        
+    try:
+        # Cerca l'oggetto nel DB (case insensitive con regex)
+        # Esempio: "longbow" trova "Longbow"
+        item = current_app.db['Items'].find_one(
+            {"name": {"$regex": f"^{name}$", "$options": "i"}}
+        )
+        return item
+    except Exception as e:
+        print(f"[ERROR] Item lookup failed for '{name}': {e}")
+        return None
 
-def get_skill_by_name(name: str, skills_db: list):
-    return next((s for s in skills_db if s["name"] == name), None)
+def get_skill_by_name(name: str, skills_db=None, player_level=None):
+    """
+    Cerca una skill nel DB e verifica se il giocatore ha il livello necessario.
+    Args:
+        name: Nome della skill.
+        skills_db: (Deprecato, mantenuto per compatibilità) Non usato.
+        player_level: (Int) Il livello attuale del player. Se None, ignora il check.
+    """
+    if not name:
+        return None
+
+    try:
+        # Cerca la skill nel DB (Case Insensitive)
+        skill = current_app.db['Skills'].find_one(
+            {"name": {"$regex": f"^{name}$", "$options": "i"}}
+        )
+
+        if not skill:
+            return None
+
+        # CHECK LIVELLO (Se il livello del player è fornito)
+        if player_level is not None:
+            min_lv = skill.get("min_lv", 0)
+            if player_level < min_lv:
+                print(f"[SYSTEM] Skill '{skill['name']}' richiede Lv {min_lv}, ma il player è Lv {player_level}.")
+                # Qui potresti ritornare un oggetto "errore" se volessi un messaggio specifico,
+                # ma ritornare None fa fallire l'azione come "Skill non disponibile".
+                return None 
+
+        return skill
+
+    except Exception as e:
+        print(f"[ERROR] Skill lookup failed for '{name}': {e}")
+        return None
+
 
 with open(skill_path, "r", encoding="utf-8") as f:
     SKILLS_DB = json.load(f)
@@ -1297,6 +1380,37 @@ def save_character(character_data):
 
 
 
+def get_db_item_names_list():
+    """
+    Recupera solo i NOMI degli oggetti dal database per ottimizzare i token.
+    Restituisce una stringa: "Longbow, Short Sword, Health Potion..."
+    """
+    try:
+        # Recupera solo il campo 'name', escludendo '_id'
+        cursor = current_app.db['Items'].find({}, {"name": 1, "_id": 0})
+        names = [doc["name"] for doc in cursor]
+        return ", ".join(names)
+    except Exception as e:
+        print(f"[ERROR] Impossibile recuperare nomi oggetti dal DB: {e}")
+        return ""
+    
+def get_db_skill_names_list():
+    """
+    Recupera solo i NOMI delle skill dal database per il contesto AI.
+    """
+    try:
+        # Recupera solo il campo 'name'
+        cursor = current_app.db['Skills'].find({}, {"name": 1, "_id": 0})
+        names = [doc["name"] for doc in cursor]
+        return ", ".join(names)
+    except Exception as e:
+        print(f"[ERROR] Impossibile recuperare nomi skill dal DB: {e}")
+        return ""
+
+
+
+
+
 def main_modular(character_id, user_input):
     global long_term_memory, turn_count, recent_history, character, state
 
@@ -1317,10 +1431,12 @@ def main_modular(character_id, user_input):
 
     #! ================= COMBAT TURN =================
     if state["in_combat"]:
+        # Passiamo ITEMS_DB come None o lista vuota se non usata, 
+        # l'importante è che combat_loop_modular usi le nuove funzioni getter
         is_finished, victory, logs = combat_loop_modular(
             character,
             state["combat_enemies"],
-            ITEMS_DB,
+            [], # items_db non serve più se usi il DB
             user_input,
             state
         )
@@ -1340,9 +1456,28 @@ def main_modular(character_id, user_input):
     #! ================= NORMAL WORLD TURN =================
     recent_history.append({"role": "user", "content": user_input})
 
+    # 1. Recupera NOMI Oggetti e Skill dal DB
+    available_items_string = get_db_item_names_list()
+    available_skills_string = get_db_skill_names_list()
+
+    # 2. Context Injection Aggiornata
+    context_injection = {
+        "role": "system",
+        "content": f"""
+        WORLD KNOWLEDGE:
+        Existing Items: [{available_items_string}]
+        Existing Skills/Spells: [{available_skills_string}]
+        
+        IMPORTANT:
+        - Only allows the player to find/buy items that exist in this list.
+        - If the player tries to use a skill, ensure it matches a name in the list.
+        """
+    }
+
     history = [
         system_rules,
         alignment_prompt,
+        context_injection,
         {"role": "system", "content": f"Memory: {long_term_memory}"},
         {"role": "system", "content": f"Sheet: {character}"},
         {"role": "system", "content": f"State: {state}"}
@@ -1350,8 +1485,7 @@ def main_modular(character_id, user_input):
 
     try:
         data = narrate_strict(history)
-        recent_history.append({"role": "assistant", "content": data.get("narration", "")
-})
+        recent_history.append({"role": "assistant", "content": data.get("narration", "")})
         turn_count += 1
 
         #! ================= COMBAT CHECK =================
@@ -1368,7 +1502,7 @@ def main_modular(character_id, user_input):
             state["combat_enemies"] = enemies
 
             is_finished, victory, logs = combat_loop_modular(
-                character, enemies, ITEMS_DB, "", state
+                character, enemies, [], "", state
             )
 
             output_buffer.extend(logs)
@@ -1396,7 +1530,6 @@ def main_modular(character_id, user_input):
 
         if data.get("narration"):
             output_buffer.append(data["narration"])
-
 
         if turn_count % 10 == 0:
             output_buffer.append("[SYSTEM] Ada is condensing memories...")
@@ -1458,18 +1591,24 @@ def combat_loop_modular(player, enemies, items, user_input, state):
         )
 
     elif action == "use skill" and selected_skill:
-        skill = get_skill_by_name(selected_skill, SKILLS_DB)
-        weapon = get_item_by_name(player["equipped_weapon"], items)
+            # Passiamo character['level'] per il controllo min_lv
+            skill = get_skill_by_name(selected_skill, skills_db=None, player_level=player['level'])
+            
+            if not skill:
+                # Se ritorna None, significa che non esiste O che il livello è troppo basso
+                turn_text.append(f"Non riesci a usare '{selected_skill}'. (Forse il livello è troppo basso?)")
+            else:
+                weapon = get_item_by_name(player["equipped_weapon"]) # Item usa DB ora
 
-        if weapon and weapon.get("subType") == "wand" and weapon.get("usages", 0) > 0:
-            weapon["usages"] -= 1
-            skill["_cast_via_wand"] = True
+                if weapon and weapon.get("subType") == "wand" and weapon.get("usages", 0) > 0:
+                    weapon["usages"] -= 1
+                    skill["_cast_via_wand"] = True
 
-        result = combat_attack(player, current_enemy, skill=skill)
-        turn_text.append(
-            f"{skill['name']} deals {result['damage']} damage to {current_enemy['name']}."
-        )
-        skill.pop("_cast_via_wand", None)
+                result = combat_attack(player, current_enemy, skill=skill)
+                turn_text.append(
+                    f"{skill['name']} deals {result['damage']} damage to {current_enemy['name']}."
+                )
+                skill.pop("_cast_via_wand", None)
 
     elif action == "use item" and selected_item:
         _, msg = use_item(player, selected_item, items)
