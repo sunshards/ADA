@@ -1503,7 +1503,7 @@ def main_modular(character_id, user_input):
 
         # Encounter logic + UI handling
         if data.get("encounter") or random_trigger:
-            output_buffer.append("\n[ALERT] Combat Initiated!")
+            # output_buffer.append("\n[ALERT] Combat Initiated!")
 
             enemies = spawn_enemy(state["location"].lower(), character["level"])
             state["in_combat"] = True
