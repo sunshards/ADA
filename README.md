@@ -13,25 +13,26 @@ Role-playing is fantastic... but it requires time, organization, and a group. Of
 ADA is a multiplayer text adventure powered by state-of-the-art AI for quick, spontaneous, and immersive sessions. No preparation required.
 
 ## Key Features
-<img width="1277" height="1325" alt="Screenshot From 2026-02-04 15-57-02" src="https://github.com/user-attachments/assets/9bedb135-6491-4eee-9205-12b101c21316" />
+
 
 ### 1. Instant Character Generation
 Gone are the days of tedious manual entry. ADA streamlines the onboarding process:
 * **Natural Language Input:** Simply answer a few prompt questions or describe your hero in plain English.
 * **Stat-Block Ready:** The system instantly compiles your description into a fully playable character sheet, complete with stats and attributes.
 
-<img width="1274" height="1472" alt="Screenshot From 2026-02-04 15-57-36" src="https://github.com/user-attachments/assets/b745af55-dc2a-4f14-b8ba-09020b37800d" />
+<img width="450" alt="Screenshot From 2026-02-04 15-57-02" src="https://github.com/user-attachments/assets/9bedb135-6491-4eee-9205-12b101c21316" />
 
 ### 2. The Dynamic AI Game Master
 ADA acts as an omnipresent storyteller, managing the flow of the game in real-time:
 * **World Building:** Automatically generates settings and weaves complex plots tailored to the group.
 * **Adaptive Narratives:** The story isn't static; ADA responds dynamically to player choices, shifting the plot as the party explores.
+<img width="450" alt="Screenshot From 2026-02-04 15-57-36" src="https://github.com/user-attachments/assets/b745af55-dc2a-4f14-b8ba-09020b37800d" />
 
-<img width="1274" height="1472" alt="Screenshot From 2026-02-04 16-02-42" src="https://github.com/user-attachments/assets/d66f4bf9-1efd-4ec7-9181-7e406bc410b9" />
 
 ### 3. Hybrid Logic System (Hallucination-Free)
 The core innovation of ADA is the separation of "Flavor" and "Rules." It reacts to natural language but relies on a rigid backend for mechanics, ensuring the AI **never hallucinates game rules.**
 
+<img width="450" alt="Screenshot From 2026-02-04 16-02-42" src="https://github.com/user-attachments/assets/d66f4bf9-1efd-4ec7-9181-7e406bc410b9" />
 * **Database Grounding:**
     * The AI cannot invent non-existent weaponry or spells.
     * All Items, Skills, Enemies, and Locations are strictly pulled from the definitions in the MongoDB/JSON database.
