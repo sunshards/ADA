@@ -14,7 +14,6 @@ ADA is a multiplayer text adventure powered by state-of-the-art AI for quick, sp
 
 ## Key Features
 
-
 ### 1. Instant Character Generation
 Gone are the days of tedious manual entry. ADA streamlines the onboarding process:
 * **Natural Language Input:** Simply answer a few prompt questions or describe your hero in plain English.
@@ -26,19 +25,21 @@ Gone are the days of tedious manual entry. ADA streamlines the onboarding proces
 ADA acts as an omnipresent storyteller, managing the flow of the game in real-time:
 * **World Building:** Automatically generates settings and weaves complex plots tailored to the group.
 * **Adaptive Narratives:** The story isn't static; ADA responds dynamically to player choices, shifting the plot as the party explores.
-<img width="450" alt="Screenshot From 2026-02-04 15-57-36" src="https://github.com/user-attachments/assets/b745af55-dc2a-4f14-b8ba-09020b37800d" />
 
+<img width="450" alt="Screenshot From 2026-02-04 15-57-36" src="https://github.com/user-attachments/assets/b745af55-dc2a-4f14-b8ba-09020b37800d" />
 
 ### 3. Hybrid Logic System (Hallucination-Free)
 The core innovation of ADA is the separation of "Flavor" and "Rules." It reacts to natural language but relies on a rigid backend for mechanics, ensuring the AI **never hallucinates game rules.**
 
 <img width="450" alt="Screenshot From 2026-02-04 16-02-42" src="https://github.com/user-attachments/assets/d66f4bf9-1efd-4ec7-9181-7e406bc410b9" />
+
 * **Database Grounding:**
     * The AI cannot invent non-existent weaponry or spells.
     * All Items, Skills, Enemies, and Locations are strictly pulled from the definitions in the MongoDB/JSON database.
 * **Logic-Based Combat:**
     * While you narrate your attack in text, the system calculates the outcome using strict math.
     * Damage rolls, hit rates, and item consumption are handled by code, not the LLM.
+ 
 
 ### 4. Game Integrity & Balance
 ADA ensures the game remains fair and consistent for all players:
